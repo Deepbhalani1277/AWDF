@@ -200,6 +200,7 @@
 .task-tags {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .status-badge {
@@ -211,7 +212,6 @@
 }
 
 .status-badge.pending { background: #fef3c7; color: #92400e; }
-.status-badge.in-progress { background: #e0f2fe; color: #0369a1; }
 .status-badge.completed { background: #dcfce7; color: #166534; }
 
 .priority-badge {
@@ -225,6 +225,12 @@
 .priority-badge.low { background: #f1f5f9; color: #475569; }
 .priority-badge.medium { background: #fef3c7; color: #b45309; }
 .priority-badge.high { background: #fee2e2; color: #b91c1c; }
+
+.date-badge {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
 
 .task-btn-group {
   display: flex;

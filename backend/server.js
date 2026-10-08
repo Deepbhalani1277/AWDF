@@ -1,7 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+
 import taskRoutes from './src/routes/taskRoutes.js';
 import { requestLogger } from './src/middleware/logger.js';
 import { notFoundHandler } from './src/middleware/notFoundHandler.js';
@@ -12,6 +17,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taskmanager';
 
 // 1. Core Built-in & Third-party Middleware
 app.use(cors());
@@ -31,8 +37,17 @@ app.use('/api/tasks', taskRoutes);
 // 5. 404 Undefined Route Handler (Supplementary Requirement)
 app.use(notFoundHandler);
 
-// 6. Centralized Global Error Handler (Must be defined last with 4 arguments)
+// 6. Centralized Global Error Handler with Mongoose Error Parsing
 app.use(globalErrorHandler);
+
+// MongoDB Database Connection - Practical 5
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log(`MongoDB connected successfully to ${MONGO_URI}`);
+  })
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+  });
 
 // Start Server
 if (process.env.NODE_ENV !== 'test') {

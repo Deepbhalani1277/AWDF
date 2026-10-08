@@ -1,5 +1,5 @@
 /**
- * Practical 4: Task Manager REST API Client
+ * Practical 5: MongoDB & Mongoose Schema API Client / Test Bench
  * Author: Deep Bhalani
  * Institute: Charotar University of Science and Technology - CSE
  */
@@ -100,11 +100,11 @@ async function fetchTasks() {
     console.error("Error fetching tasks:", err);
     tasksContainer.innerHTML = `
       <div class="box" style="border-left-color: #ef4444; text-align: center;">
-        <h2 style="color: #ef4444;">Server Connection Error</h2>
-        <p>Could not load tasks from Express server. Ensure server is running on http://localhost:5000.</p>
+        <h2 style="color: #ef4444;">Server / MongoDB Connection Error</h2>
+        <p>Could not load tasks from MongoDB backend. Ensure Express and MongoDB are running.</p>
       </div>
     `;
-    taskCountText.textContent = 'Server offline';
+    taskCountText.textContent = 'Server / DB offline';
   }
 }
 
@@ -117,44 +117,57 @@ function renderTasks() {
   const filtered = tasksList.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm) || 
                           (task.description && task.description.toLowerCase().includes(searchTerm));
-    const matchesStatus = !selectedStatus || task.status === selectedStatus;
+    
+    let matchesStatus = true;
+    if (selectedStatus === 'completed') matchesStatus = task.completed === true;
+    if (selectedStatus === 'pending') matchesStatus = task.completed === false;
+
     const matchesPriority = !selectedPriority || task.priority === selectedPriority;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  taskCountText.textContent = `Showing ${filtered.length} of ${tasksList.length} total tasks`;
+  taskCountText.textContent = `Showing ${filtered.length} of ${tasksList.length} documents in MongoDB`;
 
   if (filtered.length === 0) {
     tasksContainer.innerHTML = `
       <div class="box" style="text-align: center; margin-top: 20px;">
-        <h2>No Tasks Found</h2>
-        <p>No tasks match your criteria. Click "+ Add New Task" to create one.</p>
+        <h2>No Tasks Found in MongoDB</h2>
+        <p>No tasks match your filter. Click "+ Add New Task" to insert a document with Mongoose.</p>
       </div>
     `;
     return;
   }
 
-  tasksContainer.innerHTML = filtered.map(task => `
-    <div class="repo-card">
-      <div class="repo-card-header">
-        <h2>${escapeHtml(task.title)}</h2>
-        <span style="font-size: 13px; color: #64748b; font-weight: bold;">ID: #${task.id}</span>
-      </div>
-      <p>${escapeHtml(task.description || 'No description provided.')}</p>
-      
-      <div class="repo-card-footer">
-        <div class="card-badges">
-          <span class="tag ${task.status}">${task.status}</span>
-          <span class="tag priority">${task.priority} priority</span>
+  tasksContainer.innerHTML = filtered.map(task => {
+    const id = task._id || task.id;
+    return `
+      <div class="repo-card">
+        <div class="repo-card-header">
+          <h2>${escapeHtml(task.title)}</h2>
+          <span style="font-size: 12px; color: #64748b; font-weight: bold;" title="MongoDB ObjectId">
+            ObjectId: #${String(id).slice(-6)}
+          </span>
         </div>
-        <div>
-          <button class="card-btn" onclick="toggleTaskStatus(${task.id})" title="Toggle Next Status">Toggle Status</button>
-          <button class="card-btn" onclick="openEditModal(${task.id})">Edit</button>
-          <button class="card-btn delete" onclick="deleteTask(${task.id})">Delete</button>
+        <p>${escapeHtml(task.description || 'No description provided.')}</p>
+        
+        <div class="repo-card-footer">
+          <div class="card-badges">
+            <span class="tag ${task.completed ? 'completed' : 'pending'}">
+              ${task.completed ? 'completed' : 'pending'}
+            </span>
+            <span class="tag priority">${task.priority || 'medium'} priority</span>
+          </div>
+          <div>
+            <button class="card-btn" onclick="toggleTaskStatus('${id}')" title="Toggle Completed">
+              ${task.completed ? 'Mark Pending' : 'Mark Done'}
+            </button>
+            <button class="card-btn" onclick="openEditModal('${id}')">Edit</button>
+            <button class="card-btn delete" onclick="deleteTask('${id}')">Delete</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // Event Listeners
@@ -164,7 +177,7 @@ function initEventListeners() {
   filterPrioritySelect.addEventListener('change', renderTasks);
 
   openNewTaskBtn.addEventListener('click', () => {
-    modalHeading.textContent = 'Add New Task';
+    modalHeading.textContent = 'Add New Task in MongoDB';
     modalTaskId.value = '';
     modalTaskForm.reset();
     modalTaskPriority.value = 'medium';
@@ -186,9 +199,9 @@ async function handleTaskSubmit(e) {
   const isEditing = Boolean(id);
 
   const payload = {
-    title: modalTaskTitle.value.trim(),
-    description: modalTaskDesc.value.trim(),
-    status: modalTaskStatus.value,
+    title: modalTaskTitle.value,
+    description: modalTaskDesc.value,
+    completed: modalTaskStatus.value === 'completed',
     priority: modalTaskPriority.value
   };
 
@@ -207,7 +220,8 @@ async function handleTaskSubmit(e) {
       taskModalOverlay.classList.remove('active');
       await fetchTasks();
     } else {
-      alert(result.error || "Failed to save task.");
+      const errorMsg = result.error || (result.messages && result.messages.join('\n')) || "Failed to save task.";
+      alert(errorMsg);
     }
   } catch (err) {
     alert("Network error: " + err.message);
@@ -216,37 +230,29 @@ async function handleTaskSubmit(e) {
 
 // Open Edit Modal
 window.openEditModal = function(id) {
-  const task = tasksList.find(t => t.id === id);
+  const task = tasksList.find(t => (t._id || t.id) === id);
   if (!task) return;
 
-  modalHeading.textContent = `Edit Task #${task.id}`;
-  modalTaskId.value = task.id;
+  modalHeading.textContent = `Edit Task Document`;
+  modalTaskId.value = id;
   modalTaskTitle.value = task.title;
   modalTaskDesc.value = task.description || '';
-  modalTaskStatus.value = task.status;
-  modalTaskPriority.value = task.priority;
+  modalTaskStatus.value = task.completed ? 'completed' : 'pending';
+  modalTaskPriority.value = task.priority || 'medium';
 
   taskModalOverlay.classList.add('active');
 };
 
 // Toggle Next Status
 window.toggleTaskStatus = async function(id) {
-  const task = tasksList.find(t => t.id === id);
+  const task = tasksList.find(t => (t._id || t.id) === id);
   if (!task) return;
-
-  const nextStatusMap = {
-    'pending': 'in-progress',
-    'in-progress': 'completed',
-    'completed': 'pending'
-  };
-
-  const nextStatus = nextStatusMap[task.status] || 'pending';
 
   try {
     const res = await fetch(`${API_BASE}/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: nextStatus })
+      body: JSON.stringify({ completed: !task.completed })
     });
 
     if (res.ok) {
@@ -259,7 +265,7 @@ window.toggleTaskStatus = async function(id) {
 
 // Delete Task
 window.deleteTask = async function(id) {
-  if (!confirm(`Are you sure you want to delete task #${id}?`)) return;
+  if (!confirm(`Are you sure you want to delete this document from MongoDB?`)) return;
 
   try {
     const res = await fetch(`${API_BASE}/${id}`, {
@@ -286,7 +292,7 @@ function escapeHtml(str) {
 }
 
 // ==========================================
-// API & Middleware Tester
+// API & Middleware Tester (Practical 5)
 // ==========================================
 function initTester() {
   testCallButtons.forEach(btn => {
@@ -303,6 +309,8 @@ async function executeTest(action) {
   let headers = {};
   let body = null;
 
+  const firstTaskId = tasksList.length > 0 ? (tasksList[0]._id || tasksList[0].id) : '507f1f77bcf86cd799439011';
+
   switch (action) {
     case 'getAll':
       url = '/tasks';
@@ -310,7 +318,7 @@ async function executeTest(action) {
       break;
 
     case 'getSingle':
-      url = '/tasks/1';
+      url = `/tasks/${firstTaskId}`;
       method = 'GET';
       break;
 
@@ -319,25 +327,26 @@ async function executeTest(action) {
       method = 'POST';
       headers = { 'Content-Type': 'application/json' };
       body = JSON.stringify({
-        title: "Test Practical 4 Task",
-        description: "Created via API tester button",
-        status: "pending",
+        title: "  MongoDB & Mongoose Validation Task  ", // Leading/trailing space to test pre-save hook
+        description: "Task with pre-save whitespace trimming and high priority enum",
+        completed: false,
         priority: "high"
       });
       break;
 
     case 'updateSample':
-      url = '/tasks/1';
+      url = `/tasks/${firstTaskId}`;
       method = 'PUT';
       headers = { 'Content-Type': 'application/json' };
       body = JSON.stringify({
-        status: "completed",
-        description: "Updated status to completed via PUT"
+        completed: true,
+        priority: "high",
+        description: "Updated completed status in MongoDB via Mongoose findByIdAndUpdate"
       });
       break;
 
     case 'deleteSample':
-      url = '/tasks/4';
+      url = `/tasks/${firstTaskId}`;
       method = 'DELETE';
       break;
 
@@ -353,12 +362,12 @@ async function executeTest(action) {
       break;
 
     case 'testTaskNotFound':
-      url = '/tasks/99999';
+      url = '/tasks/507f1f77bcf86cd799439099'; // Valid ObjectId format, but non-existent
       method = 'GET';
       break;
 
     case 'testUndefinedRoute':
-      url = '/api/unsupported-path';
+      url = '/api/unsupported-endpoint';
       method = 'GET';
       break;
 
@@ -371,7 +380,7 @@ async function executeTest(action) {
   testUrlLabel.textContent = `${method} ${url}`;
   testStatusPill.className = 'pill pill-idle';
   testStatusPill.textContent = 'Sending...';
-  testJsonOutput.textContent = '// Sending HTTP request to Express server...';
+  testJsonOutput.textContent = '// Sending HTTP request to Express server with MongoDB...';
 
   const startTime = performance.now();
 

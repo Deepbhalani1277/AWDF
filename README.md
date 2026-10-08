@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository unifies **Practicals 1, 2, 3, and 4** into a cohesive full-stack web application. It features a modern modular React frontend (Vite) and a high-performance Express RESTful API backend, architected to seamlessly scale for subsequent database and backend integration practicals (such as Practical 5 with MongoDB & Mongoose).
+This repository unifies **Practicals 1, 2, 3, 4, and 5** into a cohesive full-stack web application. It features a modern modular React frontend (Vite) and an Express RESTful API backend connected to MongoDB via Mongoose ODM with robust schema validation, custom hooks, and structured error handling.
 
 ---
 
@@ -34,7 +34,7 @@ awdf-project/
 │   │   │   ├── Home.jsx & .css        # Integrated Portfolio view (Prac 1 & 2)
 │   │   │   ├── Projects.jsx & .css    # Coursework showcase (Prac 2)
 │   │   │   ├── Repositories.jsx & .css# GitHub API integration (Prac 3)
-│   │   │   ├── Tasks.jsx & .css       # Fullstack Task Manager UI (Prac 4)
+│   │   │   ├── Tasks.jsx & .css       # Fullstack MongoDB Task Manager UI (Prac 4 & 5)
 │   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2)
 │   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2)
 │   │   ├── App.jsx & App.css          # React Router composition
@@ -43,29 +43,32 @@ awdf-project/
 │   ├── vite.config.js                 # Proxy config for backend API
 │   └── package.json
 │
-├── backend/                           # Server REST API (Node.js + Express)
+├── backend/                           # Server REST API (Node.js + Express + MongoDB)
 │   ├── src/
+│   │   ├── models/
+│   │   │   └── Task.js                # [Prac 5] Mongoose Schema & pre-save hook
 │   │   ├── controllers/
-│   │   │   └── taskController.js      # [Prac 4] In-memory CRUD controllers
+│   │   │   └── taskController.js      # [Prac 5] Mongoose CRUD controllers (async/await)
 │   │   ├── routes/
-│   │   │   └── taskRoutes.js          # [Prac 4] /tasks router
+│   │   │   └── taskRoutes.js          # [Prac 4 & 5] /tasks router
 │   │   ├── middleware/
 │   │   │   ├── logger.js              # [Prac 4] Global request logger
-│   │   │   ├── validateId.js          # [Prac 4] Route-specific numeric ID validator
+│   │   │   ├── validateId.js          # [Prac 5] MongoDB ObjectId format validator
 │   │   │   ├── contentTypeValidator.js# [Prac 4] Content-Type application/json check
 │   │   │   ├── notFoundHandler.js     # [Prac 4] 404 undefined endpoint fallback
-│   │   │   └── errorHandler.js        # [Prac 4] 500 Centralized error handler
+│   │   │   └── errorHandler.js        # [Prac 5] Mongoose ValidationError/CastError parser
 │   │   └── data/
-│   │       └── tasks.js               # [Prac 4] Initial task seed data
+│   │       └── tasks.js               # [Prac 4] Legacy in-memory seed reference
 │   ├── public/                        # Standalone API interactive test bench
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── app.js
-│   ├── server.js                      # Express application entrypoint
+│   ├── server.js                      # Express application & MongoDB connection
+│   ├── .env                           # Local environment variables (git-ignored)
 │   ├── .env.example                   # Environment configuration template
 │   └── package.json
 │
-├── package.json                       # Monorepo root scripts
+├── package.json                       # Monorepo root scripts (concurrently)
 ├── .gitignore                         # Standard git ignore (node_modules, .env)
 └── README.md                          # Repository documentation
 ```
@@ -76,43 +79,37 @@ awdf-project/
 
 ### 🔹 Practical 1: React Components & Props
 * **Objective:** Construct modular UI with functional components and props passing.
-* **Key Components:**
-  - `Header`: Displays title, subtitle, and dynamic tagline passed via props.
-  - `About`: Student biographical data and institutional details.
-  - `Skills`: Interactive tech stack cards with hover elevation animations.
-  - `Footer`: Clean metadata and contact coordinates.
+* **Key Components:** `Header`, `About`, `Skills`, `Footer`.
 
 ### 🔹 Practical 2: State Management & Routing
-* **Objective:** Implement client-side routing via React Router and reactive state via `useState`.
-* **Key Features:**
-  - Multi-page routing with `BrowserRouter`, `Routes`, `Route`, and `NavLink`.
-  - Pages: `Home` (`/`), `Projects` (`/projects`), `Contact` (`/contact`), `NotFound` (`*`).
-  - Interactive Contact form featuring real-time character counting and conditional help drawer.
+* **Objective:** Client-side routing via React Router and reactive state via `useState`.
+* **Key Features:** Multi-page routing (`/`, `/projects`, `/contact`, `/not-found`), Contact form character counter.
 
 ### 🔹 Practical 3: REST API Integration & Data Rendering
 * **Objective:** Consume an external REST API asynchronously with loading and error boundaries.
-* **Key Features:**
-  - Live data fetching from GitHub API (`https://api.github.com/users/Deepbhalani1277/repos`).
-  - Search filter filtering repositories dynamically by name.
-  - Loading spinner indicator during asynchronous network requests.
-  - Error state fallback with "Retry" action button.
+* **Key Features:** GitHub API integration (`Deepbhalani1277`), search filtering, loading spinner, error retry.
 
-### 🔹 Practical 4: RESTful API Backend with Node.js & Express
+### 🔹 Practical 4: RESTful API Backend with Express
 * **Objective:** Build a complete RESTful API with structured routing and custom middleware pipeline.
-* **Key Features:**
-  - Full CRUD endpoints on `/tasks`:
-    - `GET /tasks` - Retrieve all tasks (supports query filters for status, priority, search).
-    - `GET /tasks/:id` - Retrieve task by ID with numeric validation.
-    - `POST /tasks` - Create task with required title validation.
-    - `PUT /tasks/:id` - Update existing task properties.
-    - `DELETE /tasks/:id` - Remove task by ID.
-  - Middleware Pipeline:
-    1. Built-in CORS and JSON body parsers (`express.json()`).
-    2. Global request logger printing timestamp, HTTP method, and path.
-    3. Header validator enforcing `Content-Type: application/json`.
-    4. Param validator checking numeric integer `:id`.
-    5. Undefined route fallback returning structured 404 JSON.
-    6. Centralized 500 error handler catching unhandled exceptions.
+* **Key Features:** In-memory CRUD endpoints on `/tasks`, request logging, Content-Type validation, numeric ID validation, 404 and 500 error handlers.
+
+### 🔹 Practical 5: MongoDB Integration & Schema Design with Mongoose
+* **Objective:** Connect a MongoDB database to an Express server and enforce data validation through Mongoose schema.
+* **Database Connection:** Connected via Mongoose using `MONGO_URI` from `.env`.
+* **Schema Definition (`models/Task.js`):**
+  - `title`: String, required (`required: [true, 'Task title is required']`), trimmed.
+  - `description`: String, default `""`.
+  - `completed`: Boolean, default `false`.
+  - `priority`: String, enum: `['low', 'medium', 'high']`, default `'medium'` *(Supplementary)*.
+  - `createdAt`: Date, default `Date.now`.
+* **Pre-Save Hook:** Automatically trims whitespace from the `title` field before saving to the database *(Supplementary)*.
+* **Mongoose Operations:**
+  - `Task.find()` with filtering (status, priority, keyword search).
+  - `Task.findById()` with 404 handling if non-existent *(Supplementary)*.
+  - `Task.create()` enforcing schema constraints.
+  - `Task.findByIdAndUpdate()` with `{ new: true, runValidators: true }`.
+  - `Task.findByIdAndDelete()` for document removal.
+* **Structured Error Responses:** Global error handler intercepts Mongoose `ValidationError` and `CastError` to return clean, structured JSON responses instead of raw database stack traces.
 
 ---
 
@@ -120,47 +117,30 @@ awdf-project/
 
 | Method | Endpoint | Description | Status Codes |
 |---|---|---|---|
-| `GET` | `/tasks` | List all tasks (supports `?status=`, `?priority=`, `?search=`) | `200 OK` |
-| `GET` | `/tasks/:id` | Get specific task by ID | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `POST` | `/tasks` | Create a new task (body: `{ title, description?, status?, priority? }`) | `201 Created`, `400 Bad Request` |
-| `PUT` | `/tasks/:id` | Update an existing task | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `DELETE`| `/tasks/:id` | Delete a task by ID | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `GET` | `/tasks` | List all tasks from MongoDB (supports `?completed=`, `?priority=`, `?search=`) | `200 OK` |
+| `GET` | `/tasks/:id` | Get task document by MongoDB ObjectId | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `POST` | `/tasks` | Insert task document with Mongoose validation | `201 Created`, `400 Bad Request` |
+| `PUT` | `/tasks/:id` | Update task document with schema validation | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `DELETE`| `/tasks/:id` | Delete task document from MongoDB | `200 OK`, `400 Bad Request`, `404 Not Found` |
 | `GET` | `/tasks/simulate/error` | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
 
 ---
 
 ## ⚡ Quick Start & Run Guide
 
-### 1. Install Dependencies
-In the root directory or inside both folders:
-```bash
-# In backend/
-cd backend
-npm install
-
-# In frontend/
-cd ../frontend
-npm install
+### 1. Configure Environment
+Create `.env` in `backend/`:
+```env
+PORT=5000
+NODE_ENV=development
+MONGO_URI=mongodb://127.0.0.1:27017/taskmanager
 ```
 
-### 2. Start the Backend API
+### 2. Start Both Frontend and Backend Concurrently
+From the root directory:
 ```bash
-cd backend
 npm run dev
-# Server running at: http://localhost:5000
 ```
-
-### 3. Start the Frontend Application
-```bash
-cd frontend
-npm run dev
-# Vite dev server running at: http://localhost:5173
-```
-
----
-
-## 🔜 Next Step: Practical 5 (MongoDB & Mongoose)
-This combined backend is architecturally pre-configured for **Practical 5**:
-* Replacing the in-memory array (`src/data/tasks.js`) with a real Mongoose Model (`src/models/Task.js`).
-* Enforcing schema validation (`title` required, `completed` boolean, `priority` enum `['low', 'medium', 'high']`, pre-save whitespace trimming hook).
-* Connecting via `.env` (`MONGO_URI`).
+* **Frontend:** http://localhost:5173
+* **Backend API:** http://localhost:5000
+* **API Test Bench:** http://localhost:5000/

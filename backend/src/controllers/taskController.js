@@ -1,193 +1,168 @@
-import { tasks, getNextId } from '../data/tasks.js';
+import Task from '../models/Task.js';
 
 /**
- * Controller: Get all tasks
+ * Controller: Get all tasks from MongoDB (Practical 5)
  * GET /tasks
- * Supports optional query parameters: ?status=completed&priority=high&search=keyword
+ * Supports query filters: ?completed=true&priority=high&search=keyword
  */
-export const getAllTasks = (req, res) => {
-  let result = [...tasks];
-  const { status, priority, search } = req.query;
+export const getAllTasks = async (req, res, next) => {
+  try {
+    const { completed, status, priority, search } = req.query;
+    const filter = {};
 
-  if (status) {
-    result = result.filter(t => t.status.toLowerCase() === status.toLowerCase());
+    // Filter by completed status (supporting boolean param or 'completed' string status)
+    if (completed !== undefined) {
+      filter.completed = completed === 'true';
+    } else if (status) {
+      if (status.toLowerCase() === 'completed') filter.completed = true;
+      if (status.toLowerCase() === 'pending' || status.toLowerCase() === 'in-progress') filter.completed = false;
+    }
+
+    // Filter by priority enum
+    if (priority) {
+      filter.priority = priority.toLowerCase();
+    }
+
+    // Search keyword in title or description using case-insensitive regex
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const tasks = await Task.find(filter).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      data: tasks
+    });
+  } catch (err) {
+    next(err);
   }
-
-  if (priority) {
-    result = result.filter(t => t.priority.toLowerCase() === priority.toLowerCase());
-  }
-
-  if (search) {
-    const query = search.toLowerCase();
-    result = result.filter(t => 
-      t.title.toLowerCase().includes(query) || 
-      (t.description && t.description.toLowerCase().includes(query))
-    );
-  }
-
-  res.status(200).json({
-    success: true,
-    count: result.length,
-    data: result
-  });
 };
 
 /**
- * Controller: Get single task by ID
+ * Controller: Get single task by ID from MongoDB (Practical 5)
  * GET /tasks/:id
+ * Supplementary Requirement: Returns 404 JSON response if task does not exist.
  */
-export const getTaskById = (req, res) => {
-  const taskId = req.taskId; // extracted & validated by validateTaskId middleware
-  const task = tasks.find(t => t.id === taskId);
+export const getTaskById = async (req, res, next) => {
+  try {
+    const taskId = req.taskId;
+    const task = await Task.findById(taskId);
 
-  if (!task) {
-    return res.status(404).json({
-      success: false,
-      error: `Task with ID ${taskId} not found.`
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: `Task with ID ${taskId} not found.`
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: task
     });
+  } catch (err) {
+    next(err);
   }
-
-  res.status(200).json({
-    success: true,
-    data: task
-  });
 };
 
 /**
- * Controller: Create a new task
+ * Controller: Create a new task in MongoDB (Practical 5)
  * POST /tasks
+ * Triggers Mongoose schema validation and pre-save title trimming hook.
  */
-export const createTask = (req, res) => {
-  const { title, description, status, priority } = req.body;
+export const createTask = async (req, res, next) => {
+  try {
+    const { title, description, completed, priority, status } = req.body;
 
-  // Validation: title is required
-  if (!title || typeof title !== 'string' || title.trim().length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: "Validation Error: 'title' is required and must be a non-empty string."
+    const taskData = {
+      title,
+      description: description || '',
+      completed: completed !== undefined ? Boolean(completed) : (status === 'completed'),
+      priority: priority ? priority.toLowerCase() : 'medium'
+    };
+
+    const newTask = await Task.create(taskData);
+
+    res.status(201).json({
+      success: true,
+      message: "Task created successfully.",
+      data: newTask
     });
+  } catch (err) {
+    next(err);
   }
-
-  // Allowed enum values
-  const validStatuses = ['pending', 'in-progress', 'completed'];
-  const validPriorities = ['low', 'medium', 'high'];
-
-  const normalizedStatus = status && validStatuses.includes(status.toLowerCase()) 
-    ? status.toLowerCase() 
-    : 'pending';
-
-  const normalizedPriority = priority && validPriorities.includes(priority.toLowerCase()) 
-    ? priority.toLowerCase() 
-    : 'medium';
-
-  const now = new Date().toISOString();
-  const newTask = {
-    id: getNextId(),
-    title: title.trim(),
-    description: description ? description.trim() : '',
-    status: normalizedStatus,
-    priority: normalizedPriority,
-    createdAt: now,
-    updatedAt: now
-  };
-
-  tasks.push(newTask);
-
-  res.status(201).json({
-    success: true,
-    message: "Task created successfully.",
-    data: newTask
-  });
 };
 
 /**
- * Controller: Update an existing task
+ * Controller: Update an existing task in MongoDB (Practical 5)
  * PUT /tasks/:id
+ * Enforces schema validation using { runValidators: true }
  */
-export const updateTask = (req, res) => {
-  const taskId = req.taskId;
-  const taskIndex = tasks.findIndex(t => t.id === taskId);
+export const updateTask = async (req, res, next) => {
+  try {
+    const taskId = req.taskId;
+    const updates = { ...req.body };
 
-  if (taskIndex === -1) {
-    return res.status(404).json({
-      success: false,
-      error: `Task with ID ${taskId} not found.`
+    // Support status mapping to completed
+    if (updates.status !== undefined && updates.completed === undefined) {
+      updates.completed = updates.status === 'completed';
+    }
+
+    if (updates.priority) {
+      updates.priority = updates.priority.toLowerCase();
+    }
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTask) {
+      return res.status(404).json({
+        success: false,
+        error: `Task with ID ${taskId} not found.`
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Task updated successfully.",
+      data: updatedTask
     });
+  } catch (err) {
+    next(err);
   }
-
-  const { title, description, status, priority } = req.body;
-
-  const validStatuses = ['pending', 'in-progress', 'completed'];
-  const validPriorities = ['low', 'medium', 'high'];
-
-  const existingTask = tasks[taskIndex];
-
-  // Update properties if supplied
-  if (title !== undefined) {
-    if (typeof title !== 'string' || title.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Validation Error: 'title' cannot be an empty string."
-      });
-    }
-    existingTask.title = title.trim();
-  }
-
-  if (description !== undefined) {
-    existingTask.description = typeof description === 'string' ? description.trim() : '';
-  }
-
-  if (status !== undefined) {
-    if (!validStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        error: `Invalid status. Allowed values are: ${validStatuses.join(', ')}`
-      });
-    }
-    existingTask.status = status.toLowerCase();
-  }
-
-  if (priority !== undefined) {
-    if (!validPriorities.includes(priority.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        error: `Invalid priority. Allowed values are: ${validPriorities.join(', ')}`
-      });
-    }
-    existingTask.priority = priority.toLowerCase();
-  }
-
-  existingTask.updatedAt = new Date().toISOString();
-
-  res.status(200).json({
-    success: true,
-    message: "Task updated successfully.",
-    data: existingTask
-  });
 };
 
 /**
- * Controller: Delete a task
+ * Controller: Delete a task from MongoDB (Practical 5)
  * DELETE /tasks/:id
  */
-export const deleteTask = (req, res) => {
-  const taskId = req.taskId;
-  const taskIndex = tasks.findIndex(t => t.id === taskId);
+export const deleteTask = async (req, res, next) => {
+  try {
+    const taskId = req.taskId;
+    const deletedTask = await Task.findByIdAndDelete(taskId);
 
-  if (taskIndex === -1) {
-    return res.status(404).json({
-      success: false,
-      error: `Task with ID ${taskId} not found.`
+    if (!deletedTask) {
+      return res.status(404).json({
+        success: false,
+        error: `Task with ID ${taskId} not found.`
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Task deleted successfully.",
+      data: deletedTask
     });
+  } catch (err) {
+    next(err);
   }
-
-  const deletedTask = tasks.splice(taskIndex, 1)[0];
-
-  res.status(200).json({
-    success: true,
-    message: "Task deleted successfully.",
-    data: deletedTask
-  });
 };
 
 /**
@@ -196,7 +171,7 @@ export const deleteTask = (req, res) => {
  */
 export const simulateError = (req, res, next) => {
   try {
-    throw new Error("Deliberate simulation error to test global 500 error handling middleware.");
+    throw new Error("Deliberate simulation error to test global error handling middleware.");
   } catch (err) {
     next(err);
   }
