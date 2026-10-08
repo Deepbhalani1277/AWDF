@@ -1,0 +1,26 @@
+.header {
+  background: #1e3a5f;
+  color: white;
+  text-align: center;
+  padding: 50px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.header h1 {
+  font-size: 38px;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.header .subtitle {
+  font-size: 19px;
+  opacity: 0.95;
+  font-weight: 300;
+}
+
+.header .tagline {
+  font-size: 14px;
+  margin-top: 8px;
+  color: #90caf9;
+  font-style: italic;
+}

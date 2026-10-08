@@ -1,0 +1,75 @@
+.repo-card {
+  width: 750px;
+  max-width: 90%;
+  margin: 20px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-top: 4px solid #6d28d9;
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.repo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.15);
+}
+
+.repo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.repo-card h2 {
+  color: #5b21b6;
+  font-size: 20px;
+}
+
+.star-badge {
+  font-size: 14px;
+  color: #d97706;
+  font-weight: 600;
+  background: #fef3c7;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.repo-card p {
+  margin: 12px 0 16px;
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.repo-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.lang-tag {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.repo-card a {
+  display: inline-block;
+  background: #6d28d9;
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.repo-card a:hover {
+  background: #4c1d95;
+}

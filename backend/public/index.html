@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical 4 - Task Manager REST API | Deep Bhalani</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Consistent Navbar matching Practical 1, 2, 3 -->
+  <nav class="navbar">
+    <h2>Task Manager API</h2>
+    <ul>
+      <li><a href="#" class="nav-link active" data-tab="home">Home</a></li>
+      <li><a href="#" class="nav-link" data-tab="tasks">Tasks</a></li>
+      <li><a href="#" class="nav-link" data-tab="tester">API Tester</a></li>
+    </ul>
+  </nav>
+
+  <!-- TAB 1: Home View (Matching prac2/3 Home style) -->
+  <div id="tab-home" class="tab-page active">
+    <div class="home">
+      <h1>Task Manager RESTful API</h1>
+      <p class="intro">
+        Practical 4: Building a RESTful API with Node.js, Express &amp; Middleware Pipeline
+      </p>
+
+      <div class="box">
+        <h2>About Practical 4</h2>
+        <p>
+          This Express application implements full <strong>CRUD (Create, Read, Update, Delete)</strong> operations using an in-memory task repository and a robust middleware pipeline.
+        </p>
+        <p style="margin-top: 15px;">
+          <strong>Student:</strong> Deep Bhalani<br>
+          <strong>Institute:</strong> Charotar University of Science and Technology - CSE<br>
+          <strong>Course:</strong> Advanced Web Development Frameworks (AWDF) - Sem 5
+        </p>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <button id="goToTasksBtn">View Tasks</button>
+        <button id="goToTesterBtn" style="margin-left: 15px; background: #475569;">Open API Tester</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Tasks View (Matching prac3 Repositories style) -->
+  <div id="tab-tasks" class="tab-page">
+    <div class="repositories">
+      <h1 style="text-align: center; margin-top: 40px; color: #2d3748;">Manage Tasks</h1>
+
+      <!-- Search & Filter Bar -->
+      <div class="search">
+        <input type="text" id="taskSearchInput" placeholder="Search tasks by keyword..." />
+        <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+          <select id="filterStatusSelect" class="filter-dropdown">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+          <select id="filterPrioritySelect" class="filter-dropdown">
+            <option value="">All Priorities</option>
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+          </select>
+          <button id="openNewTaskBtn" class="action-btn" style="background: #6d28d9;">+ Add New Task</button>
+        </div>
+      </div>
+
+      <!-- Live Count -->
+      <p id="taskCountText" style="text-align: center; color: #64748b; font-size: 16px; margin-bottom: 20px;">
+        Loading tasks...
+      </p>
+
+      <!-- Task Cards Container -->
+      <div id="tasksContainer">
+        <!-- Rendered via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: API Tester View -->
+  <div id="tab-tester" class="tab-page">
+    <div class="contact">
+      <h1>API &amp; Middleware Tester</h1>
+      <p style="color: #4a5568; margin-bottom: 25px;">
+        Test CRUD endpoints and custom middleware (Logging, Content-Type, ID Validator, 404, 500 error handler).
+      </p>
+
+      <div class="tester-grid">
+        <!-- Left Buttons -->
+        <div class="tester-controls">
+          <h3 style="color: #2e1065; margin-bottom: 12px; font-size: 18px;">Quick Endpoints</h3>
+          <div class="button-group">
+            <button class="test-call-btn" data-action="getAll">GET /tasks (All Tasks - 200)</button>
+            <button class="test-call-btn" data-action="getSingle">GET /tasks/1 (Single Task - 200)</button>
+            <button class="test-call-btn" data-action="createSample">POST /tasks (Create Task - 201)</button>
+            <button class="test-call-btn" data-action="updateSample">PUT /tasks/1 (Update Task - 200)</button>
+            <button class="test-call-btn" data-action="deleteSample" style="background: #e11d48;">DELETE /tasks/4 (Delete Task - 200)</button>
+          </div>
+
+          <h3 style="color: #2e1065; margin: 20px 0 12px 0; font-size: 18px;">Middleware Tests</h3>
+          <div class="button-group">
+            <button class="test-call-btn warn" data-action="testMissingHeader">POST without JSON Header (400)</button>
+            <button class="test-call-btn warn" data-action="testInvalidId">GET with Invalid ID Format (400)</button>
+            <button class="test-call-btn warn" data-action="testTaskNotFound">GET Non-existent Task (404)</button>
+            <button class="test-call-btn warn" data-action="testUndefinedRoute">GET Undefined Route (404)</button>
+            <button class="test-call-btn danger" data-action="testSimulateError">Global 500 Error Handler (500)</button>
+          </div>
+        </div>
+
+        <!-- Right Output Box -->
+        <div class="tester-output-box">
+          <div class="output-header">
+            <span id="testStatusPill" class="pill pill-idle">Status: Ready</span>
+            <span id="testTimePill" style="color: #64748b; font-size: 14px;">0 ms</span>
+          </div>
+          <div style="font-size: 14px; color: #475569; margin: 10px 0;">
+            <strong>Request:</strong> <span id="testUrlLabel">GET /tasks</span>
+          </div>
+          <pre id="testJsonOutput">// Response output will appear here after clicking an endpoint...</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for Creating / Editing Tasks -->
+  <div id="taskModalOverlay" class="modal-overlay">
+    <div class="modal-card">
+      <h2 id="modalHeading" style="color: #2e1065; margin-bottom: 20px;">Add New Task</h2>
+      <form id="modalTaskForm">
+        <input type="hidden" id="modalTaskId" />
+        
+        <div class="form-row">
+          <label for="modalTaskTitle">Task Title *</label>
+          <input type="text" id="modalTaskTitle" placeholder="e.g. Implement API Router" required />
+        </div>
+
+        <div class="form-row">
+          <label for="modalTaskDesc">Description</label>
+          <textarea id="modalTaskDesc" rows="3" placeholder="Task description and details..."></textarea>
+        </div>
+
+        <div class="form-flex">
+          <div class="form-row" style="flex: 1;">
+            <label for="modalTaskStatus">Status</label>
+            <select id="modalTaskStatus" class="filter-dropdown" style="width: 100%;">
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="form-row" style="flex: 1;">
+            <label for="modalTaskPriority">Priority</label>
+            <select id="modalTaskPriority" class="filter-dropdown" style="width: 100%;">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px;">
+          <button type="button" id="modalCancelBtn" class="action-btn" style="background: #94a3b8;">Cancel</button>
+          <button type="submit" id="modalSubmitBtn" class="action-btn" style="background: #6d28d9;">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

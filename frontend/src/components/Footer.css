@@ -1,0 +1,27 @@
+.footer {
+  background: #0d1b2a;
+  color: #e0e6ed;
+  text-align: center;
+  padding: 35px 20px 20px;
+  margin-top: 50px;
+}
+
+.footer h2 {
+  color: white;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.footer p {
+  font-size: 14px;
+  margin-top: 6px;
+  color: #a0aec0;
+}
+
+.footer .copyright {
+  font-size: 13px;
+  margin-top: 18px;
+  border-top: 1px solid #1e293b;
+  padding-top: 14px;
+  color: #718096;
+}

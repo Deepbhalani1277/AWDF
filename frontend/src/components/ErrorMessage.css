@@ -1,0 +1,37 @@
+.error {
+  width: 450px;
+  max-width: 90%;
+  margin: 60px auto;
+  background: #fef2f2;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1);
+  border: 1px solid #fecaca;
+}
+
+.error h2 {
+  color: #dc2626;
+  font-size: 20px;
+}
+
+.error p {
+  margin: 15px 0 20px;
+  color: #475569;
+  font-size: 15px;
+}
+
+.error button {
+  padding: 10px 25px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 15px;
+  transition: background 0.2s ease;
+}
+
+.error button:hover {
+  background: #b91c1c;
+}
