@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 
+import authRoutes from './src/routes/authRoutes.js';
 import taskRoutes from './src/routes/taskRoutes.js';
 import { requestLogger } from './src/middleware/logger.js';
 import { notFoundHandler } from './src/middleware/notFoundHandler.js';
@@ -31,16 +32,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(requestLogger);
 
 // 4. Mount REST API Routes
+app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/api/tasks', taskRoutes);
 
-// 5. 404 Undefined Route Handler (Supplementary Requirement)
+// 5. 404 Undefined Route Handler
 app.use(notFoundHandler);
 
-// 6. Centralized Global Error Handler with Mongoose Error Parsing
+// 6. Centralized Global Error Handler
 app.use(globalErrorHandler);
 
-// MongoDB Database Connection - Practical 5
+// MongoDB Database Connection
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log(`MongoDB connected successfully to ${MONGO_URI}`);

@@ -4,29 +4,31 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 40px;
+  padding: 16px 35px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
   z-index: 100;
+  gap: 15px;
 }
 
 .navbar h2 {
   color: white;
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .navbar ul {
   display: flex;
   list-style: none;
-  gap: 20px;
+  gap: 15px;
 }
 
 .navbar a {
   color: #e9d5ff;
   text-decoration: none;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   padding: 6px 10px;
   border-radius: 4px;
@@ -44,15 +46,70 @@
   border-bottom: 2px solid #a78bfa;
 }
 
-@media (max-width: 768px) {
+.navbar-auth {
+  display: flex;
+  align-items: center;
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.user-name-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f3e8ff;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-nav-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.auth-nav-btn.login {
+  background: #6d28d9;
+  color: white;
+  border: 1px solid #a78bfa;
+}
+
+.auth-nav-btn.login:hover {
+  background: #7c3aed;
+}
+
+.auth-nav-btn.logout {
+  background: #dc2626;
+  color: white;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.auth-nav-btn.logout:hover {
+  background: #b91c1c;
+}
+
+@media (max-width: 900px) {
   .navbar {
     flex-direction: column;
-    gap: 12px;
     padding: 15px 20px;
   }
   .navbar ul {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
   }
 }

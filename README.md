@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, and 6**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, implementing end-to-end full-stack data flow, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, and 7**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -25,23 +25,24 @@ awdf-project/
 │   │   │   ├── About.jsx & .css       # [Prac 1] Student bio & details
 │   │   │   ├── Skills.jsx & .css      # [Prac 1] Tech stack cards
 │   │   │   ├── Footer.jsx & .css      # [Prac 1] Consistent site footer
-│   │   │   ├── Navbar.jsx & .css      # [Prac 1 & 2] Sticky navigation bar
+│   │   │   ├── Navbar.jsx & .css      # [Prac 1 & 2] Sticky navigation bar with auth badge & logout
 │   │   │   ├── SearchBar.jsx & .css   # [Prac 3] Live keyword search bar
 │   │   │   ├── Spinner.jsx & .css     # [Prac 3 & 6] Asynchronous loading spinner
 │   │   │   ├── ErrorMessage.jsx & .css# [Prac 3 & 6] Error boundary with retry
 │   │   │   ├── RepoCard.jsx & .css    # [Prac 3] GitHub repository card
 │   │   │   ├── Toast.jsx & .css       # [Prac 6] Auto-dismissing toast notifications
-│   │   │   └── ConfirmModal.jsx & .css# [Prac 6] Delete confirmation modal dialog
+│   │   │   ├── ConfirmModal.jsx & .css# [Prac 6] Delete confirmation modal dialog
+│   │   │   └── AuthModal.jsx & .css   # [Prac 7] JWT Login & Register interactive modal
 │   │   ├── services/                  # Centralized API layer
-│   │   │   └── api.js                 # [Prac 6] Full-stack REST client helpers
+│   │   │   └── api.js                 # [Prac 6 & 7] REST client helpers with JWT Bearer header
 │   │   ├── pages/                     # Routed Views
 │   │   │   ├── Home.jsx & .css        # Integrated Portfolio view (Prac 1 & 2)
 │   │   │   ├── Projects.jsx & .css    # Coursework showcase (Prac 2)
 │   │   │   ├── Repositories.jsx & .css# GitHub API integration (Prac 3)
-│   │   │   ├── Tasks.jsx & .css       # Full-Stack MongoDB Task Manager UI (Prac 4, 5, 6)
+│   │   │   ├── Tasks.jsx & .css       # Full-Stack MongoDB Task Manager UI (Prac 4, 5, 6, 7)
 │   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2)
 │   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2)
-│   │   ├── App.jsx & App.css          # React Router composition
+│   │   ├── App.jsx & App.css          # React Router & Global Auth state
 │   │   ├── index.css                  # Global styling reset & variables
 │   │   └── main.jsx                   # Vite root entrypoint
 │   ├── vite.config.js                 # Proxy config for backend API
@@ -50,12 +51,17 @@ awdf-project/
 ├── backend/                           # Server REST API (Node.js + Express + MongoDB)
 │   ├── src/
 │   │   ├── models/
+│   │   │   ├── User.js                # [Prac 7] User schema with bcrypt password hashing
 │   │   │   └── Task.js                # [Prac 5] Mongoose Schema & pre-save hook
 │   │   ├── controllers/
+│   │   │   ├── authController.js      # [Prac 7] Register, Login, and /me controllers
 │   │   │   └── taskController.js      # [Prac 5 & 6] Mongoose CRUD controllers (async/await)
 │   │   ├── routes/
-│   │   │   └── taskRoutes.js          # [Prac 4 & 5] /tasks & /api/tasks router
+│   │   │   ├── authRoutes.js          # [Prac 7] /register, /login, /me endpoints
+│   │   │   └── taskRoutes.js          # [Prac 4, 5, 7] Protected /api/tasks router
 │   │   ├── middleware/
+│   │   │   ├── auth.js                # [Prac 7] JWT Bearer verification middleware
+│   │   │   ├── validateTaskInput.js   # [Prac 7] Request input validation middleware
 │   │   │   ├── logger.js              # [Prac 4] Global request logger
 │   │   │   ├── validateId.js          # [Prac 5] MongoDB ObjectId format validator
 │   │   │   ├── contentTypeValidator.js# [Prac 4] Content-Type application/json check
@@ -67,7 +73,7 @@ awdf-project/
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── app.js
-│   ├── server.js                      # Express application & MongoDB connection
+│   ├── server.js                      # Express application, JWT auth & MongoDB connection
 │   ├── .env                           # Local environment variables (git-ignored)
 │   ├── .env.example                   # Environment configuration template
 │   └── package.json
@@ -103,28 +109,34 @@ awdf-project/
 
 ### 🔹 Practical 6: Full Stack Integration (React + Node + MongoDB)
 * **Objective:** Wire the React frontend to the Node/Express/MongoDB backend into a fully functional full-stack application.
-* **Architecture:**
-  - **Frontend:** React on `http://localhost:5173`
-  - **Backend:** Express on `http://localhost:5000`
-  - **Database:** MongoDB on `mongodb://127.0.0.1:27017/taskmanager`
-* **CORS Support:** Express configured with `cors` middleware to allow cross-origin requests from the React dev server.
-* **Central API Service (`src/services/api.js`):** Modular helper functions (`fetchTasksAPI`, `createTaskAPI`, `updateTaskAPI`, `deleteTaskAPI`) avoiding redundant fetch logic.
-* **Optimistic UI Updates *(Supplementary)*:** New tasks are immediately displayed in the UI before server confirmation, with automatic rollback if the API rejects the write.
-* **Delete Confirmation Dialog *(Supplementary)*:** Interactive modal dialog confirming document deletion before executing the DELETE call.
-* **Toast Notifications *(Supplementary)*:** Floating auto-dismissing notifications providing instant feedback on success or failure for every write operation.
+* **Architecture:** React (`:5173`) ↔ Express (`:5000`) ↔ MongoDB (`:27017`).
+* **Key Features:** CORS middleware, central API service, optimistic UI updates, delete confirmation modal, auto-dismissing toast notifications.
+
+### 🔹 Practical 7: Authentication and Middleware Pipeline
+* **Objective:** Implement JWT-based authentication, bcrypt password hashing, and server-side input validation within the Express middleware pipeline.
+* **Key Features:**
+  - **Secure Password Hashing:** Uses `bcryptjs` with salt rounds (10) in Mongoose pre-save hooks so plaintext passwords are never stored.
+  - **JWT Token Generation & Expiry:** Generates signed JSON Web Tokens (`jwt.sign`) on login with 1-hour expiration and secret stored safely in `.env`.
+  - **Auth Middleware (`authenticate`):** Intercepts requests, validates `Authorization: Bearer <token>`, decodes user identity onto `req.user`, and prevents server crashes by safely handling expired/malformed tokens with HTTP 401.
+  - **Server-Side Input Validation (`validateTaskInput`):** Rejects invalid task creation/mutation payloads with HTTP 400 before hitting the database.
+  - **`/me` Endpoint *(Supplementary)*:** Returns decoded logged-in user profile from `req.user`.
+  - **Frontend Token Handling & Logout *(Supplementary)*:** Tokens stored in `localStorage`, attached to all outbound requests; automatic 401 expiration handling redirects/prompts re-authentication; explicit logout cleans client state.
 
 ---
 
 ## 🛠️ API Reference Table
 
-| Method | Endpoint | Description | Status Codes |
-|---|---|---|---|
-| `GET` | `/api/tasks` | List all tasks from MongoDB (supports `?completed=`, `?priority=`, `?search=`) | `200 OK` |
-| `GET` | `/api/tasks/:id` | Get task document by MongoDB ObjectId | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `POST` | `/api/tasks` | Insert task document with Mongoose validation | `201 Created`, `400 Bad Request` |
-| `PUT` | `/api/tasks/:id` | Update task document with schema validation | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `DELETE`| `/api/tasks/:id` | Delete task document from MongoDB | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `GET` | `/tasks/simulate/error` | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
+| Method | Endpoint | Auth Required | Description | Status Codes |
+|---|---|---|---|---|
+| `POST` | `/api/auth/register` | No | Register new user (hashes password with bcrypt) | `201 Created`, `400 Bad Request` |
+| `POST` | `/api/auth/login` | No | Authenticate user & issue signed JWT token | `200 OK`, `400 Bad Request`, `401 Unauthorized` |
+| `GET` | `/api/auth/me` | **Yes (Bearer JWT)** | Retrieve currently authenticated user profile | `200 OK`, `401 Unauthorized` |
+| `GET` | `/api/tasks` | **Yes (Bearer JWT)** | List tasks (supports `?completed=`, `?priority=`, `?search=`) | `200 OK`, `401 Unauthorized` |
+| `GET` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Get single task document by MongoDB ObjectId | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `POST` | `/api/tasks` | **Yes (Bearer JWT)** | Create task with input validation middleware | `201 Created`, `400 Bad Request`, `401 Unauthorized` |
+| `PUT` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Update task document with schema validation | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `DELETE`| `/api/tasks/:id` | **Yes (Bearer JWT)** | Delete task document from MongoDB | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `GET` | `/tasks/simulate/error` | No | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
 
 ---
 
@@ -136,6 +148,7 @@ Create `.env` in `backend/`:
 PORT=5000
 NODE_ENV=development
 MONGO_URI=mongodb://127.0.0.1:27017/taskmanager
+JWT_SECRET=supersecret_jwt_key_practical7_charusat_2026
 ```
 
 ### 2. Start Both Frontend and Backend Concurrently
@@ -146,3 +159,4 @@ npm run dev
 * **Frontend:** http://localhost:5173
 * **Backend API:** http://localhost:5000
 * **API Test Bench:** http://localhost:5000/
+
