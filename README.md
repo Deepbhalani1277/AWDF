@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, and 7**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, and 8**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -32,17 +32,21 @@ awdf-project/
 │   │   │   ├── RepoCard.jsx & .css    # [Prac 3] GitHub repository card
 │   │   │   ├── Toast.jsx & .css       # [Prac 6] Auto-dismissing toast notifications
 │   │   │   ├── ConfirmModal.jsx & .css# [Prac 6] Delete confirmation modal dialog
-│   │   │   └── AuthModal.jsx & .css   # [Prac 7] JWT Login & Register interactive modal
+│   │   │   ├── AuthModal.jsx & .css   # [Prac 7] JWT Login & Register interactive modal
+│   │   │   ├── PageLoader.jsx & .css  # [Prac 8] Suspense fallback skeleton UI
+│   │   │   └── TaskAnalyticsChart.jsx # [Prac 8] Supplementary lazy-loaded analytics component
+│   │   ├── utils/
+│   │   │   └── lazyWithDelay.js       # [Prac 8] Minimum-delay loader preventing UI flicker
 │   │   ├── services/                  # Centralized API layer
 │   │   │   └── api.js                 # [Prac 6 & 7] REST client helpers with JWT Bearer header
-│   │   ├── pages/                     # Routed Views
-│   │   │   ├── Home.jsx & .css        # Integrated Portfolio view (Prac 1 & 2)
-│   │   │   ├── Projects.jsx & .css    # Coursework showcase (Prac 2)
-│   │   │   ├── Repositories.jsx & .css# GitHub API integration (Prac 3)
-│   │   │   ├── Tasks.jsx & .css       # Full-Stack MongoDB Task Manager UI (Prac 4, 5, 6, 7)
-│   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2)
-│   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2)
-│   │   ├── App.jsx & App.css          # React Router & Global Auth state
+│   │   ├── pages/                     # Routed Views (Code-Split in Practical 8)
+│   │   │   ├── Home.jsx & .css        # Eager landing portfolio view (Prac 1 & 2)
+│   │   │   ├── Projects.jsx & .css    # Lazy-loaded coursework showcase chunk (Prac 2 & 8)
+│   │   │   ├── Repositories.jsx & .css# Lazy-loaded GitHub API integration chunk (Prac 3 & 8)
+│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager chunk (Prac 4-8)
+│   │   │   ├── Contact.jsx & .css     # Lazy-loaded contact form chunk (Prac 2 & 8)
+│   │   │   └── NotFound.jsx & .css    # Lazy-loaded 404 handler chunk (Prac 2 & 8)
+│   │   ├── App.jsx & App.css          # React Router, Suspense boundary & Auth state
 │   │   ├── index.css                  # Global styling reset & variables
 │   │   └── main.jsx                   # Vite root entrypoint
 │   ├── vite.config.js                 # Proxy config for backend API
@@ -121,6 +125,42 @@ awdf-project/
   - **Server-Side Input Validation (`validateTaskInput`):** Rejects invalid task creation/mutation payloads with HTTP 400 before hitting the database.
   - **`/me` Endpoint *(Supplementary)*:** Returns decoded logged-in user profile from `req.user`.
   - **Frontend Token Handling & Logout *(Supplementary)*:** Tokens stored in `localStorage`, attached to all outbound requests; automatic 401 expiration handling redirects/prompts re-authentication; explicit logout cleans client state.
+
+### 🔹 Practical 8: Performance Optimization and Lazy Loading in React
+* **Objective:** Improve frontend performance and initial load time using route-based code splitting, `React.lazy()`, and `Suspense`.
+* **Architecture & Flow:**
+  ```text
+  Before (Monolithic Single Bundle):
+  main.bundle.js (285 kB) ──► [Home][Projects][Repositories][Tasks][Contact] all loaded upfront
+
+  After (Code-Split Chunks):
+  main.bundle.js (270 kB)   ──► Loads immediately on first visit (Landing page)
+  ├── Projects.chunk.js     ──► Loaded on-demand only when visiting /projects
+  ├── Repositories.chunk.js ──► Loaded on-demand only when visiting /repositories
+  ├── Tasks.chunk.js        ──► Loaded on-demand only when visiting /tasks
+  │   └── Analytics.chunk.js──► Supplementary chunk loaded only when user toggles chart
+  ├── Contact.chunk.js      ──► Loaded on-demand only when visiting /contact
+  └── NotFound.chunk.js     ──► Loaded on-demand only when visiting invalid route
+  ```
+* **Key Features:**
+  - **Route-Based Code Splitting:** Converted static page imports in `App.jsx` to dynamic `React.lazy()` imports wrapped in `<Suspense>`.
+  - **Polished Fallback UI (`PageLoader.jsx`):** Renders a responsive skeleton spinner while dynamic chunks are loaded over the wire.
+  - **Anti-Flicker Minimum Delay (`lazyWithDelay.js` - *Supplementary*):** Smooths fallback rendering on fast connections to eliminate visual flickering.
+  - **On-Demand Heavy Component Splitting (`TaskAnalyticsChart.jsx` - *Supplementary*):** Heavy analytical metrics and charts are isolated into an independent chunk and only loaded when explicitly toggled.
+  - **Measured Performance Impact:** Measured using Vite build tooling and Chrome DevTools Network throttling (Slow 3G).
+
+#### 📊 Bundle Size & Chunk Distribution Comparison
+
+| Asset / Chunk | Before (Practical 7) | After (Practical 8 - Code Split) | Savings / Status |
+|---|---|---|---|
+| **Main JS Bundle** (`index.js`) | **285.04 kB** (88.88 kB gzip) | **270.64 kB** (85.70 kB gzip) | **-14.40 kB initial download** |
+| `Tasks` Module Chunk | *Included in main* | **10.94 kB** (3.31 kB gzip) | Loaded only on `/tasks` |
+| `TaskAnalyticsChart` Chunk | *Included in main* | **2.96 kB** (0.72 kB gzip) | Loaded only when toggled |
+| `Repositories` Chunk | *Included in main* | **2.20 kB** (0.95 kB gzip) | Loaded only on `/repositories` |
+| `Projects` Chunk | *Included in main* | **1.79 kB** (0.71 kB gzip) | Loaded only on `/projects` |
+| `Contact` Chunk | *Included in main* | **1.70 kB** (0.80 kB gzip) | Loaded only on `/contact` |
+| `NotFound` Chunk | *Included in main* | **0.44 kB** (0.27 kB gzip) | Loaded only on error 404 |
+| **Total Chunks Generated** | **1 JS Bundle** | **7 Separate JS Chunks** | **True Modular On-Demand Loading** |
 
 ---
 

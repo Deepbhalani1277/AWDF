@@ -1,16 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import Home from "./pages/Home";
-import Projects from "./pages/Projects";
-import Repositories from "./pages/Repositories";
-import Tasks from "./pages/Tasks";
-import Contact from "./pages/Contact";
-import NotFound from "./pages/NotFound";
+import PageLoader from "./components/PageLoader";
 import AuthModal from "./components/AuthModal";
 import { getStoredUser, removeToken, getMeAPI, getToken } from "./services/api";
+import { lazyWithDelay } from "./utils/lazyWithDelay";
 import "./App.css";
+
+// Eager landing page
+import Home from "./pages/Home";
+
+// Practical 8: Route-based Code Splitting using React.lazy() and anti-flicker delay
+const Projects = lazyWithDelay(() => import("./pages/Projects"), 250);
+const Repositories = lazyWithDelay(() => import("./pages/Repositories"), 250);
+const Tasks = lazyWithDelay(() => import("./pages/Tasks"), 250);
+const Contact = lazyWithDelay(() => import("./pages/Contact"), 250);
+const NotFound = lazyWithDelay(() => import("./pages/NotFound"), 250);
 
 function App() {
   const [user, setUser] = useState(getStoredUser());
@@ -48,22 +54,24 @@ function App() {
           onLogout={handleLogout}
         />
         <main className="page-wrapper">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/repositories" element={<Repositories />} />
-            <Route
-              path="/tasks"
-              element={
-                <Tasks
-                  user={user}
-                  onOpenAuth={() => setIsAuthOpen(true)}
-                />
-              }
-            />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<PageLoader message="Loading page component on demand..." />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/repositories" element={<Repositories />} />
+              <Route
+                path="/tasks"
+                element={
+                  <Tasks
+                    user={user}
+                    onOpenAuth={() => setIsAuthOpen(true)}
+                  />
+                }
+              />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </main>
         <Footer company="AWDF Full-Stack Portfolio & Task Management" />
 

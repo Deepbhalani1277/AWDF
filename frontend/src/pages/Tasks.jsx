@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import {
   fetchTasksAPI,
   createTaskAPI,
@@ -11,6 +11,9 @@ import Spinner from "../components/Spinner";
 import ErrorMessage from "../components/ErrorMessage";
 import "./Tasks.css";
 
+// Supplementary Practical 8: Lazy load heavy analytics chart component on demand
+const TaskAnalyticsChart = lazy(() => import("../components/TaskAnalyticsChart"));
+
 function Tasks({ user, onOpenAuth }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -18,6 +21,7 @@ function Tasks({ user, onOpenAuth }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Modal / Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -259,6 +263,30 @@ function Tasks({ user, onOpenAuth }) {
               <span className="stat-label">High Priority</span>
             </div>
           </div>
+
+          {/* Practical 8 Supplementary: Lazy-Loaded Heavy Analytics Module */}
+          <div className="analytics-toggle-wrapper">
+            <button
+              type="button"
+              className={`analytics-toggle-btn ${showAnalytics ? "active" : ""}`}
+              onClick={() => setShowAnalytics(!showAnalytics)}
+            >
+              {showAnalytics ? "✕ Hide Performance Analytics" : "📊 View Performance Analytics (Lazy-Loaded Chunk)"}
+            </button>
+          </div>
+
+          {showAnalytics && (
+            <Suspense
+              fallback={
+                <div className="analytics-loading-placeholder">
+                  <div className="analytics-mini-spinner"></div>
+                  <span>Loading TaskAnalyticsChart chunk on demand...</span>
+                </div>
+              }
+            >
+              <TaskAnalyticsChart tasks={tasks} />
+            </Suspense>
+          )}
 
           {/* Filter and Action Bar */}
           <div className="task-actions-bar">
