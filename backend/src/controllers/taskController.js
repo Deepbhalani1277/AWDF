@@ -1,16 +1,33 @@
 import Task from '../models/Task.js';
+import taskCache from '../utils/cache.js';
 
 /**
- * Controller: Get all tasks from MongoDB (Practical 5)
+ * Controller: Get all tasks from MongoDB (Practical 5 + Practical 9 In-Memory Caching)
  * GET /tasks
- * Supports query filters: ?completed=true&priority=high&search=keyword
+ * Supports in-memory caching via node-cache with 60s TTL
+ * Returns X-Cache: HIT or MISS headers
  */
 export const getAllTasks = async (req, res, next) => {
   try {
     const { completed, status, priority, search } = req.query;
+
+    // Build unique cache key based on query filters
+    const hasFilters = Object.keys(req.query).length > 0;
+    const cacheKey = hasFilters ? `tasks_${JSON.stringify(req.query)}` : 'all_tasks';
+
+    // 1. Check in-memory cache first
+    const cached = taskCache.get(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json({
+        ...cached,
+        source: 'in-memory-cache'
+      });
+    }
+
+    // 2. Cache Miss: Query MongoDB
     const filter = {};
 
-    // Filter by completed status (supporting boolean param or 'completed' string status)
     if (completed !== undefined) {
       filter.completed = completed === 'true';
     } else if (status) {
@@ -18,12 +35,10 @@ export const getAllTasks = async (req, res, next) => {
       if (status.toLowerCase() === 'pending' || status.toLowerCase() === 'in-progress') filter.completed = false;
     }
 
-    // Filter by priority enum
     if (priority) {
       filter.priority = priority.toLowerCase();
     }
 
-    // Search keyword in title or description using case-insensitive regex
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -33,10 +48,19 @@ export const getAllTasks = async (req, res, next) => {
 
     const tasks = await Task.find(filter).sort({ createdAt: -1 });
 
-    res.status(200).json({
+    const responsePayload = {
       success: true,
       count: tasks.length,
       data: tasks
+    };
+
+    // 3. Store in cache with 60-second TTL
+    taskCache.set(cacheKey, responsePayload, 60);
+
+    res.setHeader('X-Cache', 'MISS');
+    res.status(200).json({
+      ...responsePayload,
+      source: 'mongodb'
     });
   } catch (err) {
     next(err);
@@ -44,13 +68,26 @@ export const getAllTasks = async (req, res, next) => {
 };
 
 /**
- * Controller: Get single task by ID from MongoDB (Practical 5)
+ * Controller: Get single task by ID from MongoDB (Practical 5 + Practical 9 Supplementary)
  * GET /tasks/:id
- * Supplementary Requirement: Returns 404 JSON response if task does not exist.
+ * Caches individual task documents separately under `task_${id}`
  */
 export const getTaskById = async (req, res, next) => {
   try {
     const taskId = req.taskId;
+    const cacheKey = `task_${taskId}`;
+
+    // 1. Check cache
+    const cachedTask = taskCache.get(cacheKey);
+    if (cachedTask) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json({
+        ...cachedTask,
+        source: 'in-memory-cache'
+      });
+    }
+
+    // 2. Query MongoDB
     const task = await Task.findById(taskId);
 
     if (!task) {
@@ -60,9 +97,18 @@ export const getTaskById = async (req, res, next) => {
       });
     }
 
-    res.status(200).json({
+    const responsePayload = {
       success: true,
       data: task
+    };
+
+    // 3. Store in cache with 60-second TTL
+    taskCache.set(cacheKey, responsePayload, 60);
+
+    res.setHeader('X-Cache', 'MISS');
+    res.status(200).json({
+      ...responsePayload,
+      source: 'mongodb'
     });
   } catch (err) {
     next(err);
@@ -70,9 +116,9 @@ export const getTaskById = async (req, res, next) => {
 };
 
 /**
- * Controller: Create a new task in MongoDB (Practical 5)
+ * Controller: Create a new task in MongoDB (Practical 5 + Practical 9 Invalidation)
  * POST /tasks
- * Triggers Mongoose schema validation and pre-save title trimming hook.
+ * Invalidates cached task lists upon creation
  */
 export const createTask = async (req, res, next) => {
   try {
@@ -87,6 +133,9 @@ export const createTask = async (req, res, next) => {
 
     const newTask = await Task.create(taskData);
 
+    // Practical 9: Invalidate cache so stale data is never served
+    taskCache.invalidateTasks();
+
     res.status(201).json({
       success: true,
       message: "Task created successfully.",
@@ -98,16 +147,15 @@ export const createTask = async (req, res, next) => {
 };
 
 /**
- * Controller: Update an existing task in MongoDB (Practical 5)
+ * Controller: Update an existing task in MongoDB (Practical 5 + Practical 9 Invalidation)
  * PUT /tasks/:id
- * Enforces schema validation using { runValidators: true }
+ * Invalidates all list queries and specific task_${id} cache key
  */
 export const updateTask = async (req, res, next) => {
   try {
     const taskId = req.taskId;
     const updates = { ...req.body };
 
-    // Support status mapping to completed
     if (updates.status !== undefined && updates.completed === undefined) {
       updates.completed = updates.status === 'completed';
     }
@@ -129,6 +177,9 @@ export const updateTask = async (req, res, next) => {
       });
     }
 
+    // Practical 9: Invalidate cache for this item and all lists
+    taskCache.invalidateTaskById(taskId);
+
     res.status(200).json({
       success: true,
       message: "Task updated successfully.",
@@ -140,8 +191,9 @@ export const updateTask = async (req, res, next) => {
 };
 
 /**
- * Controller: Delete a task from MongoDB (Practical 5)
+ * Controller: Delete a task from MongoDB (Practical 5 + Practical 9 Invalidation)
  * DELETE /tasks/:id
+ * Invalidates cache on deletion
  */
 export const deleteTask = async (req, res, next) => {
   try {
@@ -155,6 +207,9 @@ export const deleteTask = async (req, res, next) => {
       });
     }
 
+    // Practical 9: Invalidate cache
+    taskCache.invalidateTaskById(taskId);
+
     res.status(200).json({
       success: true,
       message: "Task deleted successfully.",
@@ -163,6 +218,26 @@ export const deleteTask = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+/**
+ * Practical 9 Supplementary: Debug endpoint for cache metrics
+ * GET /tasks/cache/stats
+ */
+export const getCacheStats = (req, res) => {
+  res.status(200).json(taskCache.getStats());
+};
+
+/**
+ * Practical 9 Supplementary: Flush cache endpoint
+ * POST /tasks/cache/flush
+ */
+export const flushCache = (req, res) => {
+  taskCache.flush();
+  res.status(200).json({
+    success: true,
+    message: "In-memory cache flushed completely."
+  });
 };
 
 /**

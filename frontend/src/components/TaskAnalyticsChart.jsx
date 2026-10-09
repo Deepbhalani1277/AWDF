@@ -1,11 +1,40 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { fetchCacheStatsAPI, flushCacheAPI } from '../services/api';
 import './TaskAnalyticsChart.css';
 
 /**
- * Heavy Supplementary Component - Practical 8
- * Dynamically code-split and loaded only when requested by user in the Task Manager view.
+ * Heavy Supplementary Component - Practical 8 & 9
+ * Code-split chunk displaying task statistics and Practical 9 server-side in-memory cache telemetry.
  */
 function TaskAnalyticsChart({ tasks = [] }) {
+  const [cacheStats, setCacheStats] = useState(null);
+  const [loadingCache, setLoadingCache] = useState(false);
+
+  const loadCacheTelemetry = async () => {
+    try {
+      setLoadingCache(true);
+      const data = await fetchCacheStatsAPI();
+      setCacheStats(data);
+    } catch (err) {
+      console.error('Failed to load cache metrics:', err);
+    } finally {
+      setLoadingCache(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCacheTelemetry();
+  }, [tasks]);
+
+  const handleFlushCache = async () => {
+    try {
+      await flushCacheAPI();
+      await loadCacheTelemetry();
+    } catch (err) {
+      console.error('Failed to flush cache:', err);
+    }
+  };
+
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((t) => t.completed).length;
@@ -26,9 +55,61 @@ function TaskAnalyticsChart({ tasks = [] }) {
           <span className="analytics-icon">📊</span>
           <h3>Performance & Task Distribution Analytics</h3>
         </div>
-        <span className="analytics-badge">Lazy Loaded Chunk</span>
+        <div className="analytics-badges">
+          <span className="analytics-badge">Lazy Chunk (Prac 8)</span>
+          <span className="cache-badge">node-cache (Prac 9)</span>
+        </div>
       </div>
 
+      {/* Practical 9: In-Memory Cache Telemetry */}
+      {cacheStats && (
+        <div className="cache-telemetry-section">
+          <div className="cache-telemetry-header">
+            <h4>⚡ Server-Side In-Memory Cache Telemetry (node-cache)</h4>
+            <div className="cache-actions">
+              <button
+                type="button"
+                className="cache-action-btn refresh-btn"
+                onClick={loadCacheTelemetry}
+                disabled={loadingCache}
+              >
+                🔄 Refresh
+              </button>
+              <button
+                type="button"
+                className="cache-action-btn flush-btn"
+                onClick={handleFlushCache}
+              >
+                🗑 Flush Cache
+              </button>
+            </div>
+          </div>
+          <div className="cache-telemetry-grid">
+            <div className="cache-stat-box">
+              <span className="cache-stat-label">Cache Hit Rate</span>
+              <span className="cache-stat-val highlight">{cacheStats.hitRate}</span>
+            </div>
+            <div className="cache-stat-box">
+              <span className="cache-stat-label">Cache Hits</span>
+              <span className="cache-stat-val text-green">{cacheStats.hits}</span>
+            </div>
+            <div className="cache-stat-box">
+              <span className="cache-stat-label">Cache Misses</span>
+              <span className="cache-stat-val text-amber">{cacheStats.misses}</span>
+            </div>
+            <div className="cache-stat-box">
+              <span className="cache-stat-label">Invalidations</span>
+              <span className="cache-stat-val">{cacheStats.invalidations}</span>
+            </div>
+            <div className="cache-stat-box">
+              <span className="cache-stat-label">TTL Expiry</span>
+              <span className="cache-stat-val">{cacheStats.defaultTTLSeconds}s</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Distribution Metrics */}
       <div className="analytics-grid">
         <div className="metric-box total-box">
           <span className="metric-label">Total Tasks</span>

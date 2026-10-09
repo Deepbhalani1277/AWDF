@@ -30,6 +30,12 @@
   margin: 0;
 }
 
+.analytics-badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .analytics-badge {
   background: #ede9fe;
   color: #6366f1;
@@ -40,6 +46,113 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+.cache-badge {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Cache Telemetry Section */
+.cache-telemetry-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.cache-telemetry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.cache-telemetry-header h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.cache-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cache-action-btn {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+.cache-action-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.flush-btn:hover {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.cache-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.cache-stat-box {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cache-stat-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+
+.cache-stat-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.cache-stat-val.highlight {
+  color: #6366f1;
+}
+
+.text-green {
+  color: #16a34a !important;
+}
+
+.text-amber {
+  color: #d97706 !important;
+}
+
 
 .analytics-grid {
   display: grid;

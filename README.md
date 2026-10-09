@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, and 8**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, and 9**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -34,18 +34,18 @@ awdf-project/
 │   │   │   ├── ConfirmModal.jsx & .css# [Prac 6] Delete confirmation modal dialog
 │   │   │   ├── AuthModal.jsx & .css   # [Prac 7] JWT Login & Register interactive modal
 │   │   │   ├── PageLoader.jsx & .css  # [Prac 8] Suspense fallback skeleton UI
-│   │   │   └── TaskAnalyticsChart.jsx # [Prac 8] Supplementary lazy-loaded analytics component
+│   │   │   └── TaskAnalyticsChart.jsx # [Prac 8 & 9] Lazy-loaded analytics & cache telemetry
 │   │   ├── utils/
 │   │   │   └── lazyWithDelay.js       # [Prac 8] Minimum-delay loader preventing UI flicker
 │   │   ├── services/                  # Centralized API layer
-│   │   │   └── api.js                 # [Prac 6 & 7] REST client helpers with JWT Bearer header
+│   │   │   └── api.js                 # [Prac 6, 7, 9] REST client helpers with JWT & cache APIs
 │   │   ├── pages/                     # Routed Views (Code-Split in Practical 8)
 │   │   │   ├── Home.jsx & .css        # Eager landing portfolio view (Prac 1 & 2)
 │   │   │   ├── Projects.jsx & .css    # Lazy-loaded coursework showcase chunk (Prac 2 & 8)
 │   │   │   ├── Repositories.jsx & .css# Lazy-loaded GitHub API integration chunk (Prac 3 & 8)
-│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager chunk (Prac 4-8)
-│   │   │   ├── Contact.jsx & .css     # Lazy-loaded contact form chunk (Prac 2 & 8)
-│   │   │   └── NotFound.jsx & .css    # Lazy-loaded 404 handler chunk (Prac 2 & 8)
+│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager chunk (Prac 4-9)
+│   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2 & 8)
+│   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2 & 8)
 │   │   ├── App.jsx & App.css          # React Router, Suspense boundary & Auth state
 │   │   ├── index.css                  # Global styling reset & variables
 │   │   └── main.jsx                   # Vite root entrypoint
@@ -59,10 +59,10 @@ awdf-project/
 │   │   │   └── Task.js                # [Prac 5] Mongoose Schema & pre-save hook
 │   │   ├── controllers/
 │   │   │   ├── authController.js      # [Prac 7] Register, Login, and /me controllers
-│   │   │   └── taskController.js      # [Prac 5 & 6] Mongoose CRUD controllers (async/await)
+│   │   │   └── taskController.js      # [Prac 5, 6, 9] Mongoose CRUD & In-Memory Cache handlers
 │   │   ├── routes/
 │   │   │   ├── authRoutes.js          # [Prac 7] /register, /login, /me endpoints
-│   │   │   └── taskRoutes.js          # [Prac 4, 5, 7] Protected /api/tasks router
+│   │   │   └── taskRoutes.js          # [Prac 4, 5, 7, 9] Protected /api/tasks router & cache stats
 │   │   ├── middleware/
 │   │   │   ├── auth.js                # [Prac 7] JWT Bearer verification middleware
 │   │   │   ├── validateTaskInput.js   # [Prac 7] Request input validation middleware
@@ -71,6 +71,8 @@ awdf-project/
 │   │   │   ├── contentTypeValidator.js# [Prac 4] Content-Type application/json check
 │   │   │   ├── notFoundHandler.js     # [Prac 4] 404 undefined endpoint fallback
 │   │   │   └── errorHandler.js        # [Prac 5] Mongoose ValidationError/CastError parser
+│   │   ├── utils/
+│   │   │   └── cache.js               # [Prac 9] In-memory cache manager (node-cache) with telemetry
 │   │   └── data/
 │   │       └── tasks.js               # [Prac 4] In-memory seed reference
 │   ├── public/                        # Standalone API interactive test bench
@@ -128,39 +130,38 @@ awdf-project/
 
 ### 🔹 Practical 8: Performance Optimization and Lazy Loading in React
 * **Objective:** Improve frontend performance and initial load time using route-based code splitting, `React.lazy()`, and `Suspense`.
+* **Key Features:** Route-based code splitting, fallback skeleton UI (`PageLoader`), anti-flicker delay (`lazyWithDelay`), and on-demand heavy component lazy loading (`TaskAnalyticsChart`).
+
+### 🔹 Practical 9: In-Memory Caching and Query Optimization
+* **Objective:** Implement server-side in-memory caching using `node-cache`, establish strict cache invalidation on write operations, and measure the empirical API response time impact.
 * **Architecture & Flow:**
   ```text
-  Before (Monolithic Single Bundle):
-  main.bundle.js (285 kB) ──► [Home][Projects][Repositories][Tasks][Contact] all loaded upfront
+  Client Request (GET /api/tasks)
+         │
+         ▼
+  In-Memory Cache Check (node-cache)
+  ├── [HIT]  ──► Return cached JSON immediately (Header: X-Cache: HIT) ~1.7 ms
+  └── [MISS] ──► Query MongoDB ──► Store in cache (TTL: 60s) ──► Return JSON (X-Cache: MISS) ~5.9 ms
 
-  After (Code-Split Chunks):
-  main.bundle.js (270 kB)   ──► Loads immediately on first visit (Landing page)
-  ├── Projects.chunk.js     ──► Loaded on-demand only when visiting /projects
-  ├── Repositories.chunk.js ──► Loaded on-demand only when visiting /repositories
-  ├── Tasks.chunk.js        ──► Loaded on-demand only when visiting /tasks
-  │   └── Analytics.chunk.js──► Supplementary chunk loaded only when user toggles chart
-  ├── Contact.chunk.js      ──► Loaded on-demand only when visiting /contact
-  └── NotFound.chunk.js     ──► Loaded on-demand only when visiting invalid route
+  Client Write Request (POST / PUT / DELETE /api/tasks)
+         │
+         ▼
+  Write to MongoDB ──► Invalidate Cache Keys (taskCache.invalidateTasks()) ──► Fresh Reads
   ```
 * **Key Features:**
-  - **Route-Based Code Splitting:** Converted static page imports in `App.jsx` to dynamic `React.lazy()` imports wrapped in `<Suspense>`.
-  - **Polished Fallback UI (`PageLoader.jsx`):** Renders a responsive skeleton spinner while dynamic chunks are loaded over the wire.
-  - **Anti-Flicker Minimum Delay (`lazyWithDelay.js` - *Supplementary*):** Smooths fallback rendering on fast connections to eliminate visual flickering.
-  - **On-Demand Heavy Component Splitting (`TaskAnalyticsChart.jsx` - *Supplementary*):** Heavy analytical metrics and charts are isolated into an independent chunk and only loaded when explicitly toggled.
-  - **Measured Performance Impact:** Measured using Vite build tooling and Chrome DevTools Network throttling (Slow 3G).
+  - **Fast In-Memory Cache Layer:** Caches query responses with configurable 60-second Time-To-Live (`stdTTL: 60`).
+  - **Strict Cache Invalidation:** `POST`, `PUT`, and `DELETE` requests automatically invalidate cached queries and single-item keys, guaranteeing zero stale reads.
+  - **Telemetry & Stats Endpoint *(Supplementary)*:** Exposed at `GET /api/tasks/cache/stats`, tracking hits, misses, hit rates, and total active keys.
+  - **Granular Single-Item Caching *(Supplementary)*:** Caches `GET /api/tasks/:id` separately under `task_{id}`.
 
-#### 📊 Bundle Size & Chunk Distribution Comparison
+#### ⏱️ Empirical Response Time Comparison (Postman / Node Benchmarking)
 
-| Asset / Chunk | Before (Practical 7) | After (Practical 8 - Code Split) | Savings / Status |
+| Test Sample | Uncached (MongoDB Query / MISS) | Cached (In-Memory Node-Cache / HIT) | Speedup Factor |
 |---|---|---|---|
-| **Main JS Bundle** (`index.js`) | **285.04 kB** (88.88 kB gzip) | **270.64 kB** (85.70 kB gzip) | **-14.40 kB initial download** |
-| `Tasks` Module Chunk | *Included in main* | **10.94 kB** (3.31 kB gzip) | Loaded only on `/tasks` |
-| `TaskAnalyticsChart` Chunk | *Included in main* | **2.96 kB** (0.72 kB gzip) | Loaded only when toggled |
-| `Repositories` Chunk | *Included in main* | **2.20 kB** (0.95 kB gzip) | Loaded only on `/repositories` |
-| `Projects` Chunk | *Included in main* | **1.79 kB** (0.71 kB gzip) | Loaded only on `/projects` |
-| `Contact` Chunk | *Included in main* | **1.70 kB** (0.80 kB gzip) | Loaded only on `/contact` |
-| `NotFound` Chunk | *Included in main* | **0.44 kB** (0.27 kB gzip) | Loaded only on error 404 |
-| **Total Chunks Generated** | **1 JS Bundle** | **7 Separate JS Chunks** | **True Modular On-Demand Loading** |
+| **Sample 1** | 8.93 ms | 2.35 ms | **3.8x faster** |
+| **Sample 2** | 4.51 ms | 1.53 ms | **2.9x faster** |
+| **Sample 3** | 4.42 ms | 1.23 ms | **3.6x faster** |
+| **Average Response Time** | **5.95 ms** | **1.70 ms** | **~3.5x faster latency** |
 
 ---
 
@@ -171,11 +172,13 @@ awdf-project/
 | `POST` | `/api/auth/register` | No | Register new user (hashes password with bcrypt) | `201 Created`, `400 Bad Request` |
 | `POST` | `/api/auth/login` | No | Authenticate user & issue signed JWT token | `200 OK`, `400 Bad Request`, `401 Unauthorized` |
 | `GET` | `/api/auth/me` | **Yes (Bearer JWT)** | Retrieve currently authenticated user profile | `200 OK`, `401 Unauthorized` |
-| `GET` | `/api/tasks` | **Yes (Bearer JWT)** | List tasks (supports `?completed=`, `?priority=`, `?search=`) | `200 OK`, `401 Unauthorized` |
-| `GET` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Get single task document by MongoDB ObjectId | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
-| `POST` | `/api/tasks` | **Yes (Bearer JWT)** | Create task with input validation middleware | `201 Created`, `400 Bad Request`, `401 Unauthorized` |
-| `PUT` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Update task document with schema validation | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
-| `DELETE`| `/api/tasks/:id` | **Yes (Bearer JWT)** | Delete task document from MongoDB | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `GET` | `/api/tasks` | **Yes (Bearer JWT)** | List tasks (in-memory cached, 60s TTL) | `200 OK`, `401 Unauthorized` |
+| `GET` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Get task by ID (cached separately under `task_{id}`) | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `POST` | `/api/tasks` | **Yes (Bearer JWT)** | Create task & invalidate cache | `201 Created`, `400 Bad Request`, `401 Unauthorized` |
+| `PUT` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Update task & invalidate cache | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `DELETE`| `/api/tasks/:id` | **Yes (Bearer JWT)** | Delete task & invalidate cache | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `GET` | `/api/tasks/cache/stats` | No | Cache performance telemetry & hit-rate debug stats | `200 OK` |
+| `POST` | `/api/tasks/cache/flush` | No | Clear all keys from in-memory cache | `200 OK` |
 | `GET` | `/tasks/simulate/error` | No | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
 
 ---

@@ -153,3 +153,19 @@ export const deleteTaskAPI = async (id) => {
   }
   return data.data;
 };
+
+// Practical 9: In-Memory Cache Stats & Flush Helpers
+export const fetchCacheStatsAPI = async () => {
+  const res = await fetch(`${BASE_URL}/tasks/cache/stats`);
+  const data = await res.json();
+  return data.data;
+};
+
+export const flushCacheAPI = async () => {
+  const res = await fetch(`${BASE_URL}/tasks/cache/flush`, {
+    method: 'POST'
+  });
+  const data = await res.json();
+  return data;
+};
+
