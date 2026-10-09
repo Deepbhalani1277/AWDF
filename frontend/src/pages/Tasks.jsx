@@ -1,7 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  fetchTasksAPI,
+  createTaskAPI,
+  updateTaskAPI,
+  deleteTaskAPI
+} from "../services/api";
+import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
+import Spinner from "../components/Spinner";
+import ErrorMessage from "../components/ErrorMessage";
 import "./Tasks.css";
-
-const API_BASE = "/api/tasks";
 
 function Tasks() {
   const [tasks, setTasks] = useState([]);
@@ -11,7 +19,7 @@ function Tasks() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
 
-  // Modal / Form state
+  // Modal / Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [formData, setFormData] = useState({
@@ -21,31 +29,43 @@ function Tasks() {
     priority: "medium"
   });
 
-  const fetchTasks = async () => {
+  // Supplementary 2: Delete Confirmation Modal State
+  const [taskToDelete, setTaskToDelete] = useState(null);
+
+  // Supplementary 3: Toast Notification State
+  const [toast, setToast] = useState({ message: "", type: "success" });
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
+
+  const closeToast = () => {
+    setToast({ message: "", type: "success" });
+  };
+
+  // Load tasks on mount or on filter change
+  const loadTasks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(API_BASE);
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setTasks(data.data);
-      } else {
-        throw new Error("Invalid response format from Express API.");
-      }
+      const data = await fetchTasksAPI({
+        completed: filterStatus === "completed" ? "true" : (filterStatus === "pending" ? "false" : ""),
+        priority: filterPriority,
+        search
+      });
+      setTasks(data);
     } catch (err) {
-      setError(`Cannot connect to Express backend: ${err.message}. Ensure backend is running on port 5000 and MongoDB is connected.`);
+      setError(err.message || "Failed to load tasks from server.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus, filterPriority, search]);
 
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    loadTasks();
+  }, [loadTasks]);
 
+  // Open Create Modal
   const openCreateModal = () => {
     setEditingTaskId(null);
     setFormData({
@@ -57,6 +77,7 @@ function Tasks() {
     setIsModalOpen(true);
   };
 
+  // Open Edit Modal
   const openEditModal = (task) => {
     const id = task._id || task.id;
     setEditingTaskId(id);
@@ -69,85 +90,106 @@ function Tasks() {
     setIsModalOpen(true);
   };
 
+  // Submit Form (with Supplementary 1: Optimistic UI Update for Task Creation)
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert("Validation Error: Title is required!");
+      showToast("Title is required!", "error");
       return;
     }
 
-    try {
-      const url = editingTaskId ? `${API_BASE}/${editingTaskId}` : API_BASE;
-      const method = editingTaskId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-      });
-
-      const result = await res.json();
-      if (res.ok && result.success) {
+    if (editingTaskId) {
+      // Edit Task Flow
+      try {
+        const updated = await updateTaskAPI(editingTaskId, formData);
+        setTasks((prev) =>
+          prev.map((t) => ((t._id || t.id) === editingTaskId ? updated : t))
+        );
         setIsModalOpen(false);
-        fetchTasks();
-      } else {
-        alert(result.error || (result.messages && result.messages.join(", ")) || "Failed to save task.");
+        showToast("Task updated successfully in MongoDB!", "success");
+      } catch (err) {
+        showToast(err.message, "error");
       }
-    } catch (err) {
-      alert("Network error: " + err.message);
+    } else {
+      // Supplementary 1: Optimistic UI Update for Creation
+      const tempId = `temp_${Date.now()}`;
+      const optimisticTask = {
+        _id: tempId,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        completed: formData.completed,
+        priority: formData.priority,
+        createdAt: new Date().toISOString(),
+        isOptimistic: true
+      };
+
+      // 1. Immediately show new task in the list
+      setTasks((prev) => [optimisticTask, ...prev]);
+      setIsModalOpen(false);
+
+      try {
+        // 2. Send API request to server
+        const savedTask = await createTaskAPI(formData);
+        // 3. Replace optimistic task with actual document confirmed by MongoDB
+        setTasks((prev) =>
+          prev.map((t) => (t._id === tempId ? savedTask : t))
+        );
+        showToast("Task created successfully in MongoDB!", "success");
+      } catch (err) {
+        // Rollback state if server rejects creation
+        setTasks((prev) => prev.filter((t) => t._id !== tempId));
+        showToast(`Failed to create task: ${err.message}`, "error");
+      }
     }
   };
 
+  // Toggle Task Completion Status (with Optimistic Feedback)
   const toggleTaskStatus = async (task) => {
     const id = task._id || task.id;
+    const newStatus = !task.completed;
+
+    // Optimistic toggle
+    setTasks((prev) =>
+      prev.map((t) => ((t._id || t.id) === id ? { ...t, completed: newStatus } : t))
+    );
+
     try {
-      const res = await fetch(`${API_BASE}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: !task.completed })
-      });
-      if (res.ok) {
-        fetchTasks();
-      }
+      await updateTaskAPI(id, { completed: newStatus });
+      showToast(`Task marked as ${newStatus ? "Completed" : "Pending"}!`, "info");
     } catch (err) {
-      console.error("Status toggle error:", err);
+      // Rollback on error
+      setTasks((prev) =>
+        prev.map((t) => ((t._id || t.id) === id ? { ...t, completed: !newStatus } : t))
+      );
+      showToast(`Failed to update status: ${err.message}`, "error");
     }
   };
 
-  const deleteTask = async (task) => {
-    const id = task._id || task.id;
-    if (!window.confirm(`Are you sure you want to delete task "${task.title}"?`)) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/${id}`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        fetchTasks();
-      }
-    } catch (err) {
-      console.error("Delete task error:", err);
-    }
+  // Supplementary 2: Delete with Confirmation Dialog
+  const triggerDelete = (task) => {
+    setTaskToDelete(task);
   };
 
-  const filteredTasks = tasks.filter((t) => {
-    const matchesSearch =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      (t.description && t.description.toLowerCase().includes(search.toLowerCase()));
-    
-    let matchesStatus = true;
-    if (filterStatus === "completed") matchesStatus = t.completed === true;
-    if (filterStatus === "pending") matchesStatus = t.completed === false;
+  const confirmDelete = async () => {
+    if (!taskToDelete) return;
+    const id = taskToDelete._id || taskToDelete.id;
 
-    const matchesPriority = !filterPriority || t.priority === filterPriority;
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+    try {
+      await deleteTaskAPI(id);
+      setTasks((prev) => prev.filter((t) => (t._id || t.id) !== id));
+      showToast(`Task "${taskToDelete.title}" deleted from MongoDB!`, "info");
+    } catch (err) {
+      showToast(`Failed to delete: ${err.message}`, "error");
+    } finally {
+      setTaskToDelete(null);
+    }
+  };
 
   return (
     <div className="tasks-page">
       <h1>Task Management System</h1>
       <p className="tasks-subtitle">
-        Practical 5 &bull; MongoDB Database Integration &amp; Mongoose Schema Validation
+        Practical 6 &bull; Full-Stack React + Node + MongoDB Integration
       </p>
 
       {/* Stats Summary */}
@@ -210,32 +252,28 @@ function Tasks() {
       </div>
 
       {/* Error or Loading */}
-      {error && (
-        <div className="backend-alert error">
-          <p>{error}</p>
-          <button onClick={fetchTasks} className="retry-btn">Retry Connection</button>
-        </div>
-      )}
+      {error && <ErrorMessage message={error} onRetry={loadTasks} />}
 
-      {loading && !error && (
-        <p className="loading-text">Fetching tasks from MongoDB...</p>
-      )}
+      {loading && !error && <Spinner />}
 
       {/* Task List */}
       {!loading && !error && (
         <div className="tasks-list">
-          {filteredTasks.length === 0 ? (
+          {tasks.length === 0 ? (
             <div className="empty-tasks">
               <h3>No tasks found in MongoDB</h3>
-              <p>Click "+ Add Task" to insert a new document with schema validation.</p>
+              <p>Click "+ Add Task" to create a new task document.</p>
             </div>
           ) : (
-            filteredTasks.map((task) => {
+            tasks.map((task) => {
               const id = task._id || task.id;
               return (
-                <div key={id} className="task-item-card">
+                <div key={id} className={`task-item-card ${task.isOptimistic ? "optimistic-pulse" : ""}`}>
                   <div className="task-header">
-                    <h3>{task.title}</h3>
+                    <h3>
+                      {task.title}
+                      {task.isOptimistic && <span className="saving-tag">Saving...</span>}
+                    </h3>
                     <span className="task-id" title={`MongoDB ObjectId: ${id}`}>
                       ID: #{String(id).slice(-6)}
                     </span>
@@ -260,18 +298,21 @@ function Tasks() {
                         className="btn-status-toggle"
                         onClick={() => toggleTaskStatus(task)}
                         title="Toggle completed state"
+                        disabled={task.isOptimistic}
                       >
                         {task.completed ? "Mark Pending" : "Mark Done"}
                       </button>
                       <button
                         className="btn-edit"
                         onClick={() => openEditModal(task)}
+                        disabled={task.isOptimistic}
                       >
                         Edit
                       </button>
                       <button
                         className="btn-delete"
-                        onClick={() => deleteTask(task)}
+                        onClick={() => triggerDelete(task)}
+                        disabled={task.isOptimistic}
                       >
                         Delete
                       </button>
@@ -284,20 +325,20 @@ function Tasks() {
         </div>
       )}
 
-      {/* Task Modal */}
+      {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="modal-backdrop">
           <div className="modal-content">
-            <h2>{editingTaskId ? `Edit Task` : "Create Task in MongoDB"}</h2>
+            <h2>{editingTaskId ? "Edit Task" : "Create Task in MongoDB"}</h2>
             <form onSubmit={handleFormSubmit}>
               <div className="form-field">
-                <label>Title * (Required, whitespace auto-trimmed)</label>
+                <label>Title * (Required, auto-trimmed)</label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. Test Mongoose Schema Validation"
+                  placeholder="e.g. Implement Optimistic UI"
                 />
               </div>
 
@@ -307,7 +348,7 @@ function Tasks() {
                   rows="3"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Task details and notes..."
+                  placeholder="Task details and instructions..."
                 />
               </div>
 
@@ -323,7 +364,7 @@ function Tasks() {
                   </select>
                 </div>
                 <div className="form-field">
-                  <label>Priority (Enum: low, medium, high)</label>
+                  <label>Priority</label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
@@ -351,6 +392,26 @@ function Tasks() {
           </div>
         </div>
       )}
+
+      {/* Supplementary 2: Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(taskToDelete)}
+        title="Delete Task Confirmation"
+        message={
+          taskToDelete
+            ? `Are you sure you want to permanently delete "${taskToDelete.title}" from MongoDB?`
+            : ""
+        }
+        onConfirm={confirmDelete}
+        onCancel={() => setTaskToDelete(null)}
+      />
+
+      {/* Supplementary 3: Toast Notification Component */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={closeToast}
+      />
     </div>
   );
 }

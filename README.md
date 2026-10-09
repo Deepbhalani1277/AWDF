@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository unifies **Practicals 1, 2, 3, 4, and 5** into a cohesive full-stack web application. It features a modern modular React frontend (Vite) and an Express RESTful API backend connected to MongoDB via Mongoose ODM with robust schema validation, custom hooks, and structured error handling.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, and 6**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, implementing end-to-end full-stack data flow, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -17,7 +17,7 @@ This repository unifies **Practicals 1, 2, 3, 4, and 5** into a cohesive full-st
 
 ```text
 awdf-project/
-├── frontend/                          # Client application (React + Vite)
+├── frontend/                          # Client application (React 19 + Vite)
 │   ├── public/                        # Static assets & icons
 │   ├── src/
 │   │   ├── components/                # Modular UI Components
@@ -27,14 +27,18 @@ awdf-project/
 │   │   │   ├── Footer.jsx & .css      # [Prac 1] Consistent site footer
 │   │   │   ├── Navbar.jsx & .css      # [Prac 1 & 2] Sticky navigation bar
 │   │   │   ├── SearchBar.jsx & .css   # [Prac 3] Live keyword search bar
-│   │   │   ├── Spinner.jsx & .css     # [Prac 3] CSS loading spinner
-│   │   │   ├── ErrorMessage.jsx & .css# [Prac 3] Error alert with retry
-│   │   │   └── RepoCard.jsx & .css    # [Prac 3] GitHub repository card
+│   │   │   ├── Spinner.jsx & .css     # [Prac 3 & 6] Asynchronous loading spinner
+│   │   │   ├── ErrorMessage.jsx & .css# [Prac 3 & 6] Error boundary with retry
+│   │   │   ├── RepoCard.jsx & .css    # [Prac 3] GitHub repository card
+│   │   │   ├── Toast.jsx & .css       # [Prac 6] Auto-dismissing toast notifications
+│   │   │   └── ConfirmModal.jsx & .css# [Prac 6] Delete confirmation modal dialog
+│   │   ├── services/                  # Centralized API layer
+│   │   │   └── api.js                 # [Prac 6] Full-stack REST client helpers
 │   │   ├── pages/                     # Routed Views
 │   │   │   ├── Home.jsx & .css        # Integrated Portfolio view (Prac 1 & 2)
 │   │   │   ├── Projects.jsx & .css    # Coursework showcase (Prac 2)
 │   │   │   ├── Repositories.jsx & .css# GitHub API integration (Prac 3)
-│   │   │   ├── Tasks.jsx & .css       # Fullstack MongoDB Task Manager UI (Prac 4 & 5)
+│   │   │   ├── Tasks.jsx & .css       # Full-Stack MongoDB Task Manager UI (Prac 4, 5, 6)
 │   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2)
 │   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2)
 │   │   ├── App.jsx & App.css          # React Router composition
@@ -48,9 +52,9 @@ awdf-project/
 │   │   ├── models/
 │   │   │   └── Task.js                # [Prac 5] Mongoose Schema & pre-save hook
 │   │   ├── controllers/
-│   │   │   └── taskController.js      # [Prac 5] Mongoose CRUD controllers (async/await)
+│   │   │   └── taskController.js      # [Prac 5 & 6] Mongoose CRUD controllers (async/await)
 │   │   ├── routes/
-│   │   │   └── taskRoutes.js          # [Prac 4 & 5] /tasks router
+│   │   │   └── taskRoutes.js          # [Prac 4 & 5] /tasks & /api/tasks router
 │   │   ├── middleware/
 │   │   │   ├── logger.js              # [Prac 4] Global request logger
 │   │   │   ├── validateId.js          # [Prac 5] MongoDB ObjectId format validator
@@ -58,7 +62,7 @@ awdf-project/
 │   │   │   ├── notFoundHandler.js     # [Prac 4] 404 undefined endpoint fallback
 │   │   │   └── errorHandler.js        # [Prac 5] Mongoose ValidationError/CastError parser
 │   │   └── data/
-│   │       └── tasks.js               # [Prac 4] Legacy in-memory seed reference
+│   │       └── tasks.js               # [Prac 4] In-memory seed reference
 │   ├── public/                        # Standalone API interactive test bench
 │   │   ├── index.html
 │   │   ├── style.css
@@ -95,21 +99,19 @@ awdf-project/
 
 ### 🔹 Practical 5: MongoDB Integration & Schema Design with Mongoose
 * **Objective:** Connect a MongoDB database to an Express server and enforce data validation through Mongoose schema.
-* **Database Connection:** Connected via Mongoose using `MONGO_URI` from `.env`.
-* **Schema Definition (`models/Task.js`):**
-  - `title`: String, required (`required: [true, 'Task title is required']`), trimmed.
-  - `description`: String, default `""`.
-  - `completed`: Boolean, default `false`.
-  - `priority`: String, enum: `['low', 'medium', 'high']`, default `'medium'` *(Supplementary)*.
-  - `createdAt`: Date, default `Date.now`.
-* **Pre-Save Hook:** Automatically trims whitespace from the `title` field before saving to the database *(Supplementary)*.
-* **Mongoose Operations:**
-  - `Task.find()` with filtering (status, priority, keyword search).
-  - `Task.findById()` with 404 handling if non-existent *(Supplementary)*.
-  - `Task.create()` enforcing schema constraints.
-  - `Task.findByIdAndUpdate()` with `{ new: true, runValidators: true }`.
-  - `Task.findByIdAndDelete()` for document removal.
-* **Structured Error Responses:** Global error handler intercepts Mongoose `ValidationError` and `CastError` to return clean, structured JSON responses instead of raw database stack traces.
+* **Key Features:** Mongoose connection (`MONGO_URI`), Task schema with required fields, defaults, `priority` enum, pre-save whitespace trimming hook, structured JSON validation errors.
+
+### 🔹 Practical 6: Full Stack Integration (React + Node + MongoDB)
+* **Objective:** Wire the React frontend to the Node/Express/MongoDB backend into a fully functional full-stack application.
+* **Architecture:**
+  - **Frontend:** React on `http://localhost:5173`
+  - **Backend:** Express on `http://localhost:5000`
+  - **Database:** MongoDB on `mongodb://127.0.0.1:27017/taskmanager`
+* **CORS Support:** Express configured with `cors` middleware to allow cross-origin requests from the React dev server.
+* **Central API Service (`src/services/api.js`):** Modular helper functions (`fetchTasksAPI`, `createTaskAPI`, `updateTaskAPI`, `deleteTaskAPI`) avoiding redundant fetch logic.
+* **Optimistic UI Updates *(Supplementary)*:** New tasks are immediately displayed in the UI before server confirmation, with automatic rollback if the API rejects the write.
+* **Delete Confirmation Dialog *(Supplementary)*:** Interactive modal dialog confirming document deletion before executing the DELETE call.
+* **Toast Notifications *(Supplementary)*:** Floating auto-dismissing notifications providing instant feedback on success or failure for every write operation.
 
 ---
 
@@ -117,11 +119,11 @@ awdf-project/
 
 | Method | Endpoint | Description | Status Codes |
 |---|---|---|---|
-| `GET` | `/tasks` | List all tasks from MongoDB (supports `?completed=`, `?priority=`, `?search=`) | `200 OK` |
-| `GET` | `/tasks/:id` | Get task document by MongoDB ObjectId | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `POST` | `/tasks` | Insert task document with Mongoose validation | `201 Created`, `400 Bad Request` |
-| `PUT` | `/tasks/:id` | Update task document with schema validation | `200 OK`, `400 Bad Request`, `404 Not Found` |
-| `DELETE`| `/tasks/:id` | Delete task document from MongoDB | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `GET` | `/api/tasks` | List all tasks from MongoDB (supports `?completed=`, `?priority=`, `?search=`) | `200 OK` |
+| `GET` | `/api/tasks/:id` | Get task document by MongoDB ObjectId | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `POST` | `/api/tasks` | Insert task document with Mongoose validation | `201 Created`, `400 Bad Request` |
+| `PUT` | `/api/tasks/:id` | Update task document with schema validation | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `DELETE`| `/api/tasks/:id` | Delete task document from MongoDB | `200 OK`, `400 Bad Request`, `404 Not Found` |
 | `GET` | `/tasks/simulate/error` | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
 
 ---
