@@ -19,6 +19,7 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Logs
+# Logs & scratch
 logs/
 *.log
+test-db.js

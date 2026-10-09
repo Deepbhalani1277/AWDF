@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import "./Tasks.css";
 
+const API_BASE = "/api/tasks";
+
 function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ function Tasks() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/tasks");
+      const res = await fetch(API_BASE);
       if (!res.ok) {
         throw new Error(`Server returned HTTP ${res.status}`);
       }
@@ -75,7 +77,7 @@ function Tasks() {
     }
 
     try {
-      const url = editingTaskId ? `/tasks/${editingTaskId}` : "/tasks";
+      const url = editingTaskId ? `${API_BASE}/${editingTaskId}` : API_BASE;
       const method = editingTaskId ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -99,7 +101,7 @@ function Tasks() {
   const toggleTaskStatus = async (task) => {
     const id = task._id || task.id;
     try {
-      const res = await fetch(`/tasks/${id}`, {
+      const res = await fetch(`${API_BASE}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: !task.completed })
@@ -117,7 +119,7 @@ function Tasks() {
     if (!window.confirm(`Are you sure you want to delete task "${task.title}"?`)) return;
 
     try {
-      const res = await fetch(`/tasks/${id}`, {
+      const res = await fetch(`${API_BASE}/${id}`, {
         method: "DELETE"
       });
       if (res.ok) {
