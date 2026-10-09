@@ -1,35 +1,41 @@
 import { useMemo, useState, useEffect } from 'react';
-import { fetchCacheStatsAPI, flushCacheAPI } from '../services/api';
+import { fetchCacheStatsAPI, flushCacheAPI, fetchEventHistoryAPI } from '../services/api';
 import './TaskAnalyticsChart.css';
 
 /**
- * Heavy Supplementary Component - Practical 8 & 9
- * Code-split chunk displaying task statistics and Practical 9 server-side in-memory cache telemetry.
+ * Heavy Supplementary Component - Practical 8, 9 & 10
+ * Code-split chunk displaying task statistics, Practical 9 cache telemetry,
+ * and Practical 10 asynchronous event-driven background processing logs.
  */
 function TaskAnalyticsChart({ tasks = [] }) {
   const [cacheStats, setCacheStats] = useState(null);
+  const [events, setEvents] = useState([]);
   const [loadingCache, setLoadingCache] = useState(false);
 
-  const loadCacheTelemetry = async () => {
+  const loadTelemetry = async () => {
     try {
       setLoadingCache(true);
-      const data = await fetchCacheStatsAPI();
-      setCacheStats(data);
+      const [cacheData, eventData] = await Promise.all([
+        fetchCacheStatsAPI(),
+        fetchEventHistoryAPI()
+      ]);
+      setCacheStats(cacheData);
+      setEvents(eventData || []);
     } catch (err) {
-      console.error('Failed to load cache metrics:', err);
+      console.error('Failed to load telemetry:', err);
     } finally {
       setLoadingCache(false);
     }
   };
 
   useEffect(() => {
-    loadCacheTelemetry();
+    loadTelemetry();
   }, [tasks]);
 
   const handleFlushCache = async () => {
     try {
       await flushCacheAPI();
-      await loadCacheTelemetry();
+      await loadTelemetry();
     } catch (err) {
       console.error('Failed to flush cache:', err);
     }
@@ -53,11 +59,12 @@ function TaskAnalyticsChart({ tasks = [] }) {
       <div className="analytics-header">
         <div className="analytics-title">
           <span className="analytics-icon">📊</span>
-          <h3>Performance & Task Distribution Analytics</h3>
+          <h3>Performance, Caching & Event Bus Telemetry</h3>
         </div>
         <div className="analytics-badges">
           <span className="analytics-badge">Lazy Chunk (Prac 8)</span>
           <span className="cache-badge">node-cache (Prac 9)</span>
+          <span className="event-badge">EventEmitter (Prac 10)</span>
         </div>
       </div>
 
@@ -70,7 +77,7 @@ function TaskAnalyticsChart({ tasks = [] }) {
               <button
                 type="button"
                 className="cache-action-btn refresh-btn"
-                onClick={loadCacheTelemetry}
+                onClick={loadTelemetry}
                 disabled={loadingCache}
               >
                 🔄 Refresh
@@ -108,6 +115,48 @@ function TaskAnalyticsChart({ tasks = [] }) {
           </div>
         </div>
       )}
+
+      {/* Practical 10: Asynchronous Event-Driven Stream */}
+      <div className="events-stream-section">
+        <div className="events-stream-header">
+          <h4>📡 Asynchronous Event-Driven Bus Logs (Node.js EventEmitter)</h4>
+          <span className="events-count-pill">{events.length} Events Logged</span>
+        </div>
+        {events.length === 0 ? (
+          <p className="no-events-text">No background events emitted yet. Create or delete a task to trigger non-blocking listeners!</p>
+        ) : (
+          <div className="events-timeline">
+            {events.slice(0, 4).map((evt) => (
+              <div key={evt.id} className={`event-log-item event-${evt.type}`}>
+                <div className="event-item-top">
+                  <span className="event-tag">{evt.type}</span>
+                  <span className="event-time">
+                    {new Date(evt.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="event-item-details">
+                  {evt.type === 'task-created' && (
+                    <span>
+                      Task: <strong>"{evt.payload?.title}"</strong> | User: {evt.payload?.user} |
+                      Worker: <em className="text-green">Dispatched asynchronously</em>
+                    </span>
+                  )}
+                  {evt.type === 'task-deleted' && (
+                    <span>
+                      Deleted Task ID: <code>{evt.payload?.taskId?.slice(-6)}</code> | By: {evt.payload?.user}
+                    </span>
+                  )}
+                  {evt.type === 'task-updated' && (
+                    <span>
+                      Updated Task: <strong>"{evt.payload?.title}"</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Task Distribution Metrics */}
       <div className="analytics-grid">

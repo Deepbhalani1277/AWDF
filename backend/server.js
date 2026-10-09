@@ -13,6 +13,9 @@ import { requestLogger } from './src/middleware/logger.js';
 import { notFoundHandler } from './src/middleware/notFoundHandler.js';
 import { globalErrorHandler } from './src/middleware/errorHandler.js';
 
+// Practical 10: Initialize Event-Driven Architecture Listeners
+import './src/events/taskListeners.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

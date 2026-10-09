@@ -169,3 +169,11 @@ export const flushCacheAPI = async () => {
   return data;
 };
 
+// Practical 10: Asynchronous Event History Helper
+export const fetchEventHistoryAPI = async () => {
+  const res = await fetch(`${BASE_URL}/tasks/events/history`);
+  const data = await res.json();
+  return data.events;
+};
+
+

@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, and 9**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, and 10**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -34,16 +34,16 @@ awdf-project/
 │   │   │   ├── ConfirmModal.jsx & .css# [Prac 6] Delete confirmation modal dialog
 │   │   │   ├── AuthModal.jsx & .css   # [Prac 7] JWT Login & Register interactive modal
 │   │   │   ├── PageLoader.jsx & .css  # [Prac 8] Suspense fallback skeleton UI
-│   │   │   └── TaskAnalyticsChart.jsx # [Prac 8 & 9] Lazy-loaded analytics & cache telemetry
+│   │   │   └── TaskAnalyticsChart.jsx # [Prac 8, 9, 10] Analytics, cache telemetry & event bus logs
 │   │   ├── utils/
 │   │   │   └── lazyWithDelay.js       # [Prac 8] Minimum-delay loader preventing UI flicker
 │   │   ├── services/                  # Centralized API layer
-│   │   │   └── api.js                 # [Prac 6, 7, 9] REST client helpers with JWT & cache APIs
+│   │   │   └── api.js                 # [Prac 6, 7, 9, 10] REST client helpers with JWT, cache & event APIs
 │   │   ├── pages/                     # Routed Views (Code-Split in Practical 8)
 │   │   │   ├── Home.jsx & .css        # Eager landing portfolio view (Prac 1 & 2)
 │   │   │   ├── Projects.jsx & .css    # Lazy-loaded coursework showcase chunk (Prac 2 & 8)
 │   │   │   ├── Repositories.jsx & .css# Lazy-loaded GitHub API integration chunk (Prac 3 & 8)
-│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager chunk (Prac 4-9)
+│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager chunk (Prac 4-10)
 │   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2 & 8)
 │   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2 & 8)
 │   │   ├── App.jsx & App.css          # React Router, Suspense boundary & Auth state
@@ -59,10 +59,10 @@ awdf-project/
 │   │   │   └── Task.js                # [Prac 5] Mongoose Schema & pre-save hook
 │   │   ├── controllers/
 │   │   │   ├── authController.js      # [Prac 7] Register, Login, and /me controllers
-│   │   │   └── taskController.js      # [Prac 5, 6, 9] Mongoose CRUD & In-Memory Cache handlers
+│   │   │   └── taskController.js      # [Prac 5, 6, 9, 10] Mongoose CRUD, Cache & Event triggers
 │   │   ├── routes/
 │   │   │   ├── authRoutes.js          # [Prac 7] /register, /login, /me endpoints
-│   │   │   └── taskRoutes.js          # [Prac 4, 5, 7, 9] Protected /api/tasks router & cache stats
+│   │   │   └── taskRoutes.js          # [Prac 4, 5, 7, 9, 10] Protected /api/tasks & event endpoints
 │   │   ├── middleware/
 │   │   │   ├── auth.js                # [Prac 7] JWT Bearer verification middleware
 │   │   │   ├── validateTaskInput.js   # [Prac 7] Request input validation middleware
@@ -71,6 +71,9 @@ awdf-project/
 │   │   │   ├── contentTypeValidator.js# [Prac 4] Content-Type application/json check
 │   │   │   ├── notFoundHandler.js     # [Prac 4] 404 undefined endpoint fallback
 │   │   │   └── errorHandler.js        # [Prac 5] Mongoose ValidationError/CastError parser
+│   │   ├── events/
+│   │   │   ├── taskEvents.js          # [Prac 10] Native Node.js EventEmitter bus singleton
+│   │   │   └── taskListeners.js       # [Prac 10] Asynchronous listeners for created/deleted/error
 │   │   ├── utils/
 │   │   │   └── cache.js               # [Prac 9] In-memory cache manager (node-cache) with telemetry
 │   │   └── data/
@@ -79,7 +82,7 @@ awdf-project/
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── app.js
-│   ├── server.js                      # Express application, JWT auth & MongoDB connection
+│   ├── server.js                      # Express application, JWT auth, listeners & MongoDB connection
 │   ├── .env                           # Local environment variables (git-ignored)
 │   ├── .env.example                   # Environment configuration template
 │   └── package.json
@@ -134,34 +137,32 @@ awdf-project/
 
 ### 🔹 Practical 9: In-Memory Caching and Query Optimization
 * **Objective:** Implement server-side in-memory caching using `node-cache`, establish strict cache invalidation on write operations, and measure the empirical API response time impact.
+* **Key Features:** 60-second TTL in-memory caching, auto-invalidation on write operations, single-task caching under `task_{id}`, and real-time telemetry stats (`GET /api/tasks/cache/stats`).
+
+### 🔹 Practical 10: Asynchronous Processing with Event-Driven Architecture
+* **Objective:** Implement asynchronous background processing using Node.js native `EventEmitter` without external dependencies.
 * **Architecture & Flow:**
   ```text
-  Client Request (GET /api/tasks)
+  POST /api/tasks Request
          │
          ▼
-  In-Memory Cache Check (node-cache)
-  ├── [HIT]  ──► Return cached JSON immediately (Header: X-Cache: HIT) ~1.7 ms
-  └── [MISS] ──► Query MongoDB ──► Store in cache (TTL: 60s) ──► Return JSON (X-Cache: MISS) ~5.9 ms
-
-  Client Write Request (POST / PUT / DELETE /api/tasks)
+  Save task document to MongoDB
          │
          ▼
-  Write to MongoDB ──► Invalidate Cache Keys (taskCache.invalidateTasks()) ──► Fresh Reads
+  API Responds Immediately (201 Created) ──► Client receives instant response (~12 ms)
+         │
+         ▼ (Asynchronous Side-Effect, Non-blocking)
+  taskEvents.emit('task-created', { task, user, apiTimestamp })
+         │
+         ▼
+  [Notification Listener / Worker]
+  └── Simulates email/webhook dispatch (1200ms delay) ──► Worker finishes at 07:12:08.119Z
   ```
 * **Key Features:**
-  - **Fast In-Memory Cache Layer:** Caches query responses with configurable 60-second Time-To-Live (`stdTTL: 60`).
-  - **Strict Cache Invalidation:** `POST`, `PUT`, and `DELETE` requests automatically invalidate cached queries and single-item keys, guaranteeing zero stale reads.
-  - **Telemetry & Stats Endpoint *(Supplementary)*:** Exposed at `GET /api/tasks/cache/stats`, tracking hits, misses, hit rates, and total active keys.
-  - **Granular Single-Item Caching *(Supplementary)*:** Caches `GET /api/tasks/:id` separately under `task_{id}`.
-
-#### ⏱️ Empirical Response Time Comparison (Postman / Node Benchmarking)
-
-| Test Sample | Uncached (MongoDB Query / MISS) | Cached (In-Memory Node-Cache / HIT) | Speedup Factor |
-|---|---|---|---|
-| **Sample 1** | 8.93 ms | 2.35 ms | **3.8x faster** |
-| **Sample 2** | 4.51 ms | 1.53 ms | **2.9x faster** |
-| **Sample 3** | 4.42 ms | 1.23 ms | **3.6x faster** |
-| **Average Response Time** | **5.95 ms** | **1.70 ms** | **~3.5x faster latency** |
+  - **Native Node.js EventEmitter Bus:** Decouples background notifications from the main HTTP request-response cycle.
+  - **Proven Response-Before-Handler Timing:** HTTP response returned at `07:12:06.909Z` (~12 ms), while the heavy worker completed 1.21 seconds later at `07:12:08.119Z` without blocking.
+  - **Supplementary Events:** Implemented `task-deleted`, `task-updated`, and safe `error` event handlers.
+  - **Live Event Stream Endpoint:** Exposes `GET /api/tasks/events/history` to audit background worker jobs in real-time.
 
 ---
 
@@ -174,11 +175,12 @@ awdf-project/
 | `GET` | `/api/auth/me` | **Yes (Bearer JWT)** | Retrieve currently authenticated user profile | `200 OK`, `401 Unauthorized` |
 | `GET` | `/api/tasks` | **Yes (Bearer JWT)** | List tasks (in-memory cached, 60s TTL) | `200 OK`, `401 Unauthorized` |
 | `GET` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Get task by ID (cached separately under `task_{id}`) | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
-| `POST` | `/api/tasks` | **Yes (Bearer JWT)** | Create task & invalidate cache | `201 Created`, `400 Bad Request`, `401 Unauthorized` |
-| `PUT` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Update task & invalidate cache | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
-| `DELETE`| `/api/tasks/:id` | **Yes (Bearer JWT)** | Delete task & invalidate cache | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `POST` | `/api/tasks` | **Yes (Bearer JWT)** | Create task, invalidate cache & emit `task-created` | `201 Created`, `400 Bad Request`, `401 Unauthorized` |
+| `PUT` | `/api/tasks/:id` | **Yes (Bearer JWT)** | Update task, invalidate cache & emit `task-updated` | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
+| `DELETE`| `/api/tasks/:id` | **Yes (Bearer JWT)** | Delete task, invalidate cache & emit `task-deleted` | `200 OK`, `400 Bad Request`, `404 Not Found`, `401 Unauthorized` |
 | `GET` | `/api/tasks/cache/stats` | No | Cache performance telemetry & hit-rate debug stats | `200 OK` |
 | `POST` | `/api/tasks/cache/flush` | No | Clear all keys from in-memory cache | `200 OK` |
+| `GET` | `/api/tasks/events/history` | No | Asynchronous background event bus logs | `200 OK` |
 | `GET` | `/tasks/simulate/error` | No | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
 
 ---

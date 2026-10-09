@@ -1,5 +1,6 @@
 import Task from '../models/Task.js';
 import taskCache from '../utils/cache.js';
+import taskEvents from '../events/taskEvents.js';
 
 /**
  * Controller: Get all tasks from MongoDB (Practical 5 + Practical 9 In-Memory Caching)
@@ -116,9 +117,9 @@ export const getTaskById = async (req, res, next) => {
 };
 
 /**
- * Controller: Create a new task in MongoDB (Practical 5 + Practical 9 Invalidation)
+ * Controller: Create a new task in MongoDB (Practical 5, 9, 10)
  * POST /tasks
- * Invalidates cached task lists upon creation
+ * Practical 10: Responds immediately, then asynchronously emits 'task-created' event
  */
 export const createTask = async (req, res, next) => {
   try {
@@ -136,10 +137,22 @@ export const createTask = async (req, res, next) => {
     // Practical 9: Invalidate cache so stale data is never served
     taskCache.invalidateTasks();
 
+    // Practical 10: Record API response timestamp and respond immediately
+    const apiTimestamp = new Date().toISOString();
+    console.log(`[API RESPONSE] POST /tasks 201 Sent at: ${apiTimestamp}`);
+
     res.status(201).json({
       success: true,
       message: "Task created successfully.",
-      data: newTask
+      data: newTask,
+      apiTimestamp
+    });
+
+    // Practical 10: Emit event asynchronously (non-blocking side-effect)
+    taskEvents.emit('task-created', {
+      task: newTask,
+      user: req.user,
+      apiTimestamp
     });
   } catch (err) {
     next(err);
@@ -147,9 +160,9 @@ export const createTask = async (req, res, next) => {
 };
 
 /**
- * Controller: Update an existing task in MongoDB (Practical 5 + Practical 9 Invalidation)
+ * Controller: Update an existing task in MongoDB (Practical 5, 9, 10)
  * PUT /tasks/:id
- * Invalidates all list queries and specific task_${id} cache key
+ * Practical 10: Emits 'task-updated' event asynchronously
  */
 export const updateTask = async (req, res, next) => {
   try {
@@ -180,10 +193,22 @@ export const updateTask = async (req, res, next) => {
     // Practical 9: Invalidate cache for this item and all lists
     taskCache.invalidateTaskById(taskId);
 
+    const apiTimestamp = new Date().toISOString();
+
     res.status(200).json({
       success: true,
       message: "Task updated successfully.",
-      data: updatedTask
+      data: updatedTask,
+      apiTimestamp
+    });
+
+    // Practical 10: Emit 'task-updated' event
+    taskEvents.emit('task-updated', {
+      taskId,
+      title: updatedTask.title,
+      user: req.user,
+      updates,
+      apiTimestamp
     });
   } catch (err) {
     next(err);
@@ -191,9 +216,9 @@ export const updateTask = async (req, res, next) => {
 };
 
 /**
- * Controller: Delete a task from MongoDB (Practical 5 + Practical 9 Invalidation)
+ * Controller: Delete a task from MongoDB (Practical 5, 9, 10)
  * DELETE /tasks/:id
- * Invalidates cache on deletion
+ * Practical 10: Emits 'task-deleted' event asynchronously
  */
 export const deleteTask = async (req, res, next) => {
   try {
@@ -210,10 +235,21 @@ export const deleteTask = async (req, res, next) => {
     // Practical 9: Invalidate cache
     taskCache.invalidateTaskById(taskId);
 
+    const apiTimestamp = new Date().toISOString();
+
     res.status(200).json({
       success: true,
       message: "Task deleted successfully.",
-      data: deletedTask
+      data: deletedTask,
+      apiTimestamp
+    });
+
+    // Practical 10: Emit 'task-deleted' event
+    taskEvents.emit('task-deleted', {
+      taskId,
+      title: deletedTask.title,
+      user: req.user,
+      apiTimestamp
     });
   } catch (err) {
     next(err);
@@ -241,6 +277,18 @@ export const flushCache = (req, res) => {
 };
 
 /**
+ * Practical 10 Supplementary: Background Event History inspection endpoint
+ * GET /tasks/events/history
+ */
+export const getEventHistory = (req, res) => {
+  res.status(200).json({
+    success: true,
+    count: taskEvents.getHistory().length,
+    events: taskEvents.getHistory()
+  });
+};
+
+/**
  * Controller: Trigger deliberate error to test global error handling middleware
  * GET /tasks/simulate/error
  */
@@ -251,3 +299,4 @@ export const simulateError = (req, res, next) => {
     next(err);
   }
 };
+

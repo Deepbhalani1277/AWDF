@@ -7,7 +7,8 @@ import {
   deleteTask,
   simulateError,
   getCacheStats,
-  flushCache
+  flushCache,
+  getEventHistory
 } from '../controllers/taskController.js';
 import { validateTaskId } from '../middleware/validateId.js';
 import { validateContentType } from '../middleware/contentTypeValidator.js';
@@ -22,6 +23,9 @@ router.get('/simulate/error', simulateError);
 // Practical 9 Supplementary: Cache statistics and debug endpoints
 router.get('/cache/stats', getCacheStats);
 router.post('/cache/flush', flushCache);
+
+// Practical 10 Supplementary: Event-driven background processing history endpoint
+router.get('/events/history', getEventHistory);
 
 // Standard Protected CRUD endpoints (Practical 7 Middleware Pipeline)
 router.get('/', authenticate, getAllTasks);
