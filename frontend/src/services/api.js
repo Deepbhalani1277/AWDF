@@ -3,7 +3,7 @@
  * Includes token storage, auth headers, user registration/login, and protected task calls.
  */
 
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = '/api';
 
 // Token Management
 export const getToken = () => localStorage.getItem('awdf_token');
