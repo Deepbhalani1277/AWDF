@@ -11,7 +11,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, and 12**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, containerized via multi-container Docker & Docker Compose orchestration, automated with Continuous Integration (CI) testing via GitHub Actions, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, and 13**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, containerized via multi-container Docker & Docker Compose orchestration, automated with Continuous Integration (CI) testing via GitHub Actions, integrating secure server-side AI capabilities (OpenAI & Gemini) with robust graceful degradation and responsible AI governance, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -43,12 +43,12 @@ awdf-project/
 │   │   ├── utils/
 │   │   │   └── lazyWithDelay.js       # [Prac 8] Minimum-delay loader preventing UI flicker
 │   │   ├── services/                  # Centralized API layer
-│   │   │   └── api.js                 # [Prac 6, 7, 9, 10] REST client helpers with JWT, cache & event APIs
+│   │   │   └── api.js                 # [Prac 6, 7, 9, 10, 13] REST client helpers with JWT, cache, events & AI APIs
 │   │   ├── pages/                     # Routed Views (Code-Split in Practical 8)
 │   │   │   ├── Home.jsx & .css        # Eager landing portfolio view (Prac 1 & 2)
 │   │   │   ├── Projects.jsx & .css    # Lazy-loaded coursework showcase chunk (Prac 2 & 8)
 │   │   │   ├── Repositories.jsx & .css# Lazy-loaded GitHub API integration chunk (Prac 3 & 8)
-│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager chunk (Prac 4-10)
+│   │   │   ├── Tasks.jsx & .css       # Lazy-loaded Full-Stack Task Manager (Prac 4-13) with AI Generator
 │   │   │   ├── Contact.jsx & .css     # Reactive contact form (Prac 2 & 8)
 │   │   │   └── NotFound.jsx & .css    # 404 handler page (Prac 2 & 8)
 │   │   ├── App.jsx & App.css          # React Router, Suspense boundary & Auth state
@@ -66,10 +66,12 @@ awdf-project/
 │   │   │   └── Task.js                # [Prac 5] Mongoose Schema & pre-save hook
 │   │   ├── controllers/
 │   │   │   ├── authController.js      # [Prac 7] Register, Login, and /me controllers
-│   │   │   └── taskController.js      # [Prac 5, 6, 9, 10] Mongoose CRUD, Cache & Event triggers
+│   │   │   ├── taskController.js      # [Prac 5, 6, 9, 10] Mongoose CRUD, Cache & Event triggers
+│   │   │   └── aiController.js        # [Prac 13] OpenAI/Gemini integration with graceful degradation
 │   │   ├── routes/
 │   │   │   ├── authRoutes.js          # [Prac 7] /register, /login, /me endpoints
-│   │   │   └── taskRoutes.js          # [Prac 4, 5, 7, 9, 10] Protected /api/tasks & event endpoints
+│   │   │   ├── taskRoutes.js          # [Prac 4, 5, 7, 9, 10] Protected /api/tasks & event endpoints
+│   │   │   └── aiRoutes.js            # [Prac 13] /api/ai/generate-description endpoint
 │   │   ├── middleware/
 │   │   │   ├── auth.js                # [Prac 7] JWT Bearer verification middleware
 │   │   │   ├── validateTaskInput.js   # [Prac 7] Request input validation middleware
@@ -262,6 +264,52 @@ awdf-project/
   - Live MongoDB service container integrated into the GitHub Actions runner.
   - Embedded live CI pipeline status badge in [README.md](file:///d:/clg/sem%205/AWDF/awdf-project/README.md).
 
+### 🔹 Practical 13: AI API Integration into a Web Application
+* **CO/PO Mapping:** CO6 / PO3, PO5, PO12
+* **Objective:** Securely integrate an external AI service (OpenAI / Gemini) into the full-stack web application with robust graceful degradation and adhere to responsible AI principles.
+* **Architecture & Data Flow:**
+  ```text
+  React Frontend (Tasks Modal Form)
+         │  Click: "✨ Generate with AI"
+         ▼  (Dispatches POST /api/ai/generate-description)
+  Express Backend REST API (/api/ai/generate-description)
+         │  Enforces client rate-limiting cooldown (4s)
+         │  Reads API Key securely server-side from .env (OPENAI_API_KEY / GEMINI_API_KEY)
+         ▼
+  External AI Service (OpenAI gpt-4o-mini / Gemini 1.5 Flash)
+         │
+         ├──► Success: Returns AI-synthesized 2-3 sentence task description + suggested priority
+         │
+         └──► Failure / Offline / Missing Key: Graceful Degradation activates:
+              Returns contextual heuristic draft without crashing application!
+         │
+         ▼
+  React Frontend receives structured payload:
+  - Fills description textarea as an editable draft
+  - Updates suggested priority level
+  - Displays visible AI Disclaimer Banner
+  ```
+* **Key Components & Files:**
+  - `backend/src/controllers/aiController.js`: Secure server-side controller with multi-provider AI support (OpenAI SDK & Gemini REST API), IP-based rate limiting, input validation, and intelligent local heuristic fallback.
+  - `backend/src/routes/aiRoutes.js`: Exposes `POST /api/ai/generate-description`.
+  - `backend/server.js`: Mounted at `/ai` and `/api/ai`.
+  - `frontend/src/services/api.js`: Added `generateAIDescriptionAPI(title)` helper.
+  - `frontend/src/pages/Tasks.jsx` & `Tasks.css`: Added "✨ Generate with AI" button, animated loading state spinner, rate-limit cooldown toast alerts, and prominent AI Disclaimer badge.
+* **Key Questions / Viva Analysis:**
+  1. **Why must the AI API key be called from the backend rather than directly from the React frontend?**
+     - Frontend code runs entirely in the client's browser environment. Any API key embedded in frontend JavaScript or passed via headers is visible in browser DevTools Network inspect panels and decompiled source bundles. Exposing keys publicly allows malicious actors to steal credentials, exhaust API token quotas, and incur unauthorized financial charges.
+     - Confining the API key strictly to server-side environment variables (`process.env.OPENAI_API_KEY`) protects secrets, prevents credential leakage, and enables server-side rate-limiting, request sanitization, and access control.
+  2. **What does 'graceful degradation' mean in this context, and why does it matter for a feature that depends on a third-party service outside your control?**
+     - **Graceful degradation** is an architectural principle where a web application continues operating with baseline functionality when an auxiliary or non-critical external dependency fails.
+     - Third-party AI services are subject to network timeouts, latency spikes, rate limits (HTTP 429), or service outages. By encapsulating AI requests in a `try/catch` pipeline and returning a contextual heuristic fallback (`fallback: true`), the task creation process never halts, and the application remains 100% operational even during total third-party AI downtime.
+  3. **What are the privacy and governance implications of sending task data to an external AI API, and what kind of data should never be sent this way?**
+     - Sending data to public external AI APIs transfers user inputs across external networks to third-party model providers, where data could potentially be logged or used for future model training unless zero-data retention agreements are established.
+     - **Data that must NEVER be sent:** Personally Identifiable Information (PII) such as national IDs, passwords, credit card numbers, confidential health/medical records, proprietary algorithms, internal company financial figures, or encryption keys.
+* **Supplementary Solutions:**
+  - Loading state with animated spinner (`aiLoading`) in the frontend UI.
+  - Client-side and server-side rate limiting (4-second cooldown per client to prevent quota flooding).
+  - Clear, prominent UI disclaimer banner stating that suggestions are AI-generated and should be reviewed by the user.
+
 ---
 
 ## 🛠️ API Reference Table
@@ -279,6 +327,7 @@ awdf-project/
 | `GET` | `/api/tasks/cache/stats` | No | Cache performance telemetry & hit-rate debug stats | `200 OK` |
 | `POST` | `/api/tasks/cache/flush` | No | Clear all keys from in-memory cache | `200 OK` |
 | `GET` | `/api/tasks/events/history` | No | Asynchronous background event bus logs | `200 OK` |
+| `POST` | `/api/ai/generate-description` | No (Rate-limited) | AI-powered task description generator with graceful fallback | `200 OK`, `400 Bad Request`, `429 Too Many Requests` |
 | `GET` | `/tasks/simulate/error` | No | Deliberately triggers internal error to test 500 handler | `500 Internal Server Error` |
 
 ---

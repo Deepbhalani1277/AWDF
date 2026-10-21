@@ -23,4 +23,26 @@ describe('CI/CD Automated API Tests - Practical 12', () => {
     expect(res.statusCode).toBe(401);
     expect(res.body).toHaveProperty('error');
   });
+
+  // Test 4: Practical 13 AI Endpoint Input Validation
+  test('POST /api/ai/generate-description returns 400 when title is missing', async () => {
+    const res = await request(app)
+      .post('/api/ai/generate-description')
+      .send({});
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  // Test 5: Practical 13 AI Endpoint Generation & Graceful Fallback
+  test('POST /api/ai/generate-description returns valid description and disclaimer', async () => {
+    const res = await request(app)
+      .post('/api/ai/generate-description')
+      .send({ title: 'Implement Automated Unit Testing' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body).toHaveProperty('description');
+    expect(res.body.description.length).toBeGreaterThan(10);
+    expect(res.body).toHaveProperty('disclaimer');
+  });
 });
+

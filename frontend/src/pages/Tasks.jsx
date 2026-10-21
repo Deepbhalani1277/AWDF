@@ -3,7 +3,8 @@ import {
   fetchTasksAPI,
   createTaskAPI,
   updateTaskAPI,
-  deleteTaskAPI
+  deleteTaskAPI,
+  generateAIDescriptionAPI
 } from "../services/api";
 import Toast from "../components/Toast";
 import ConfirmModal from "../components/ConfirmModal";
@@ -32,6 +33,11 @@ function Tasks({ user, onOpenAuth }) {
     completed: false,
     priority: "medium"
   });
+
+  // Practical 13: AI Generation States
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDisclaimer, setAiDisclaimer] = useState(null);
+  const [aiCooldown, setAiCooldown] = useState(false);
 
   // Delete Confirmation Modal State
   const [taskToDelete, setTaskToDelete] = useState(null);
@@ -82,6 +88,7 @@ function Tasks({ user, onOpenAuth }) {
   // Open Create Modal
   const openCreateModal = () => {
     setEditingTaskId(null);
+    setAiDisclaimer(null);
     setFormData({
       title: "",
       description: "",
@@ -95,6 +102,7 @@ function Tasks({ user, onOpenAuth }) {
   const openEditModal = (task) => {
     const id = task._id || task.id;
     setEditingTaskId(id);
+    setAiDisclaimer(null);
     setFormData({
       title: task.title,
       description: task.description || "",
@@ -102,6 +110,44 @@ function Tasks({ user, onOpenAuth }) {
       priority: task.priority || "medium"
     });
     setIsModalOpen(true);
+  };
+
+  // Practical 13: Handle AI Task Description Generation
+  const handleGenerateAIDescription = async () => {
+    if (!formData.title.trim()) {
+      showToast("Please enter a task title first!", "error");
+      return;
+    }
+    if (aiCooldown) {
+      showToast("Rate limit: please wait a few seconds before generating again.", "error");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiCooldown(true);
+    setTimeout(() => setAiCooldown(false), 4000);
+
+    try {
+      const res = await generateAIDescriptionAPI(formData.title);
+      if (res && res.description) {
+        setFormData((prev) => ({
+          ...prev,
+          description: res.description,
+          ...(res.suggestedPriority ? { priority: res.suggestedPriority } : {})
+        }));
+        setAiDisclaimer(res.disclaimer || "AI-generated suggestion. Please review and edit before saving.");
+        showToast(
+          res.fallback
+            ? "Contextual draft generated (graceful fallback mode)."
+            : "✨ AI description generated successfully!",
+          "success"
+        );
+      }
+    } catch (err) {
+      showToast(err.message || "Failed to generate AI description", "error");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   // Submit Form (with Optimistic UI Update)
@@ -416,13 +462,39 @@ function Tasks({ user, onOpenAuth }) {
                   </div>
 
                   <div className="form-field">
-                    <label>Description</label>
+                    <div className="description-label-row">
+                      <label>Description</label>
+                      <button
+                        type="button"
+                        className="btn-ai-generate"
+                        onClick={handleGenerateAIDescription}
+                        disabled={aiLoading || !formData.title.trim()}
+                        title="Auto-generate description using AI"
+                      >
+                        {aiLoading ? (
+                          <>
+                            <span className="ai-spinner"></span>
+                            <span>Generating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✨ Generate with AI</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     <textarea
                       rows="3"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Task details and notes..."
+                      placeholder="Task details and notes (or click '✨ Generate with AI' above)..."
                     />
+                    {aiDisclaimer && (
+                      <div className="ai-disclaimer-box">
+                        <span className="ai-disclaimer-icon">💡</span>
+                        <span className="ai-disclaimer-text">{aiDisclaimer}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-grid">

@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 
 import authRoutes from './src/routes/authRoutes.js';
 import taskRoutes from './src/routes/taskRoutes.js';
+import aiRoutes from './src/routes/aiRoutes.js';
 import { requestLogger } from './src/middleware/logger.js';
 import { notFoundHandler } from './src/middleware/notFoundHandler.js';
 import { globalErrorHandler } from './src/middleware/errorHandler.js';
@@ -44,6 +45,8 @@ app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/ai', aiRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 5. 404 Undefined Route Handler
 app.use(notFoundHandler);

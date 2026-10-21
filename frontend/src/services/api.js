@@ -176,4 +176,21 @@ export const fetchEventHistoryAPI = async () => {
   return data.events;
 };
 
+// Practical 13: AI Description Generator API Helper
+export const generateAIDescriptionAPI = async (title) => {
+  const res = await fetch(`${BASE_URL}/ai/generate-description`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ title })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to generate AI description');
+  }
+  return data;
+};
+
+
 
