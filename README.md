@@ -1,5 +1,7 @@
 # Advanced Web Development Frameworks (AWDF) — Master Practicals Repository
 
+[![CI Pipeline](https://github.com/Deepbhalani1277/AWDF/actions/workflows/ci.yml/badge.svg)](https://github.com/Deepbhalani1277/AWDF/actions/workflows/ci.yml)
+
 **Student:** Deep Bhalani  
 **Institution:** Charotar University of Science and Technology (CHARUSAT) — CSE  
 **Semester:** 5th Semester  
@@ -9,7 +11,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 11**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, containerized via multi-container Docker & Docker Compose orchestration, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, and 12**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, containerized via multi-container Docker & Docker Compose orchestration, automated with Continuous Integration (CI) testing via GitHub Actions, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -17,6 +19,9 @@ This repository provides an integrated, progressive full-stack web application e
 
 ```text
 awdf-project/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                     # [Prac 12] GitHub Actions automated CI test & build pipeline
 ├── frontend/                          # Client application (React 19 + Vite)
 │   ├── public/                        # Static assets & icons
 │   ├── src/
@@ -84,6 +89,9 @@ awdf-project/
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── app.js
+│   ├── tests/                         # [Prac 12] Automated backend integration test suite
+│   │   └── api.test.js                # [Prac 12] Supertest API assertions (health, cache, auth)
+│   ├── jest.config.json               # [Prac 12] Jest test runner configuration (ESM)
 │   ├── server.js                      # Express application, JWT auth, listeners & MongoDB connection
 │   ├── Dockerfile                     # [Prac 11] Backend Node.js container definition
 │   ├── .dockerignore                  # [Prac 11] Excludes node_modules & .env from build context
@@ -203,6 +211,56 @@ awdf-project/
   - Added `.dockerignore` files for root, frontend, and backend contexts.
   - Configured multi-stage build structure for the React frontend.
   - Implemented persistent named volume `mongo-data:/data/db` so MongoDB data persists seamlessly across container teardowns and restarts.
+
+### 🔹 Practical 12: CI/CD Pipeline with GitHub Actions
+* **CO/PO Mapping:** CO5 / PO3, PO5
+* **Objective:** Automate build verification and end-to-end integration testing of the application using a continuous integration (CI) pipeline powered by GitHub Actions.
+* **Architecture & Pipeline Flow:**
+  ```text
+  git push origin main / pull_request
+         │
+         ▼
+  GitHub Actions Trigger (on: push, pull_request)
+         │
+         ▼
+  Job: build-and-test (Runner: ubuntu-latest)
+  ├── Service Container: mongodb:latest (port 27017:27017)
+  ├── Step 1: actions/checkout@v4 (fetch source tree)
+  ├── Step 2: actions/setup-node@v4 (Node.js v18 LTS)
+  ├── Step 3: Install Monorepo & Service Dependencies (root, backend, frontend)
+  ├── Step 4: Build Frontend Production Bundle (Vite compile check)
+  ├── Step 5: Execute Automated Integration Tests (Jest + Supertest)
+  └── Step 6: Publish Pipeline Telemetry & Status
+         │
+         ▼
+  Green Checkmark (✔ Build & Test Passed) or Red X (✖ Failed Test Alert)
+  ```
+* **Key Components & Files:**
+  - `.github/workflows/ci.yml`: Defines automated workflow triggers on `push` and `pull_request` targeting `main`, launches a live MongoDB service container, compiles the frontend bundle, and runs the backend test suite.
+  - `backend/tests/api.test.js`: Integration tests using `jest` and `supertest`:
+    1. **Health Check (`GET /health`):** Asserts HTTP 200, uptime, and `{ status: 'ok' }`.
+    2. **Telemetry Telemetry (`GET /api/tasks/cache/stats`):** Asserts HTTP 200, `{ success: true }`, and cache telemetry keys (`hits`, `misses`, `keysCount`).
+    3. **Auth Guard (`GET /api/tasks`):** Asserts HTTP 401 Unauthorized when no JWT Bearer token is provided, verifying security middleware.
+  - `backend/jest.config.json`: Native ES Modules (`type: module`) test runner configuration.
+  - `package.json`: Unified root script `"test": "npm --prefix backend test"`.
+* **Key Questions / Viva Analysis:**
+  1. **What is the difference between Continuous Integration (CI) and Continuous Deployment (CD), and which one does this practical demonstrate?**
+     - **Continuous Integration (CI)** is the practice of automatically integrating code changes from multiple contributors into a shared repository several times a day. Each integration is verified by an automated build and test runner to detect integration defects as early as possible.
+     - **Continuous Deployment (CD)** is the automated release phase where code changes that pass all CI stages are automatically published and deployed to staging or production infrastructure without human intervention.
+     - **Practical Demonstration:** This practical demonstrates **Continuous Integration (CI)** — on every push or pull request to `main`, GitHub Actions provisions a clean Linux runner, installs dependencies, compiles assets, and executes automated test suites with real-time pass/fail status reporting.
+  2. **Why does running tests automatically on every push catch problems earlier than testing manually before a release?**
+     - Automated CI provides an immediate feedback loop within seconds of pushing code. A developer knows immediately which specific commit caused a regression while the implementation details are fresh in memory.
+     - In contrast, manual pre-release testing batches weeks or months of changes together. When a failure occurs, identifying which specific change broke the application requires time-consuming root-cause debugging across dozens of commits and multiple developer contributions.
+  3. **What would happen to the pipeline if the test file path were incorrect — would the workflow fail at the same step as a genuine test failure?**
+     - If the test file path is wrong, Jest will exit with code 1 reporting `No tests found matching pattern`, causing the `npm test` step to fail due to a runner configuration error. However, if configured with `--passWithNoTests`, it would silently pass with exit code 0, creating a dangerous false positive.
+     - A genuine test failure occurs when tests execute, assertions fail (`expect().toBe()`), and Jest exits with code 1 while outputting assertion diffs. While both cause the pipeline step to fail (red X), their log signatures and root causes are completely different.
+* **Deliberate Failure & Fix Demonstration (Lab Requirement):**
+  - **Demonstrating Failure (Red X):** Modify an assertion in `backend/tests/api.test.js` (e.g., `expect(res.statusCode).toBe(500)`), push to GitHub, and observe the red X under the Actions tab with detailed error diffs.
+  - **Demonstrating Fix (Green Checkmark):** Restore the assertion to `200`, commit and push, and observe the pipeline execute successfully with a green checkmark.
+* **Supplementary Solutions:**
+  - Multi-endpoint test coverage (Health, Cache telemetry, Auth security).
+  - Live MongoDB service container integrated into the GitHub Actions runner.
+  - Embedded live CI pipeline status badge in [README.md](file:///d:/clg/sem%205/AWDF/awdf-project/README.md).
 
 ---
 

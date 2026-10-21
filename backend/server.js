@@ -34,6 +34,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 3. Custom Request Logging Middleware (Global)
 app.use(requestLogger);
 
+// Health check endpoint for CI/CD and Container monitoring
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
 // 4. Mount REST API Routes
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
