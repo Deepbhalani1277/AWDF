@@ -1,11 +1,14 @@
 {
   "name": "awdf-master-project",
   "version": "1.0.0",
-  "description": "Advanced Web Development Frameworks (AWDF) - Unified Full-Stack Practicals (Prac 1 to 4)",
+  "description": "Advanced Web Development Frameworks (AWDF) - Unified Full-Stack Practicals (Prac 1 to 11)",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "npm --prefix backend run dev",
     "client": "npm --prefix frontend run dev",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
     "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install"
   },
   "keywords": [

@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, and 10**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
+This repository provides an integrated, progressive full-stack web application encompassing **Practicals 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 11**. It combines a modular React frontend (Vite) with an Express RESTful API backend connected to MongoDB via Mongoose ODM, containerized via multi-container Docker & Docker Compose orchestration, featuring asynchronous background processing using native Node.js `EventEmitter`, server-side in-memory caching (`node-cache`) with telemetry, route-based code splitting and lazy loading (`React.lazy()` / `Suspense`), JWT-based authentication, bcrypt password hashing, Express middleware pipelines, centralized API services, optimistic UI updates, delete confirmation dialogs, and real-time toast feedback.
 
 ---
 
@@ -49,7 +49,9 @@ awdf-project/
 │   │   ├── App.jsx & App.css          # React Router, Suspense boundary & Auth state
 │   │   ├── index.css                  # Global styling reset & variables
 │   │   └── main.jsx                   # Vite root entrypoint
-│   ├── vite.config.js                 # Proxy config for backend API
+│   ├── vite.config.js                 # Proxy config for backend API (local + container)
+│   ├── Dockerfile                     # [Prac 11] Multi-stage React Vite container definition
+│   ├── .dockerignore                  # [Prac 11] Excludes node_modules & dist from build context
 │   └── package.json
 │
 ├── backend/                           # Server REST API (Node.js + Express + MongoDB)
@@ -83,11 +85,15 @@ awdf-project/
 │   │   ├── style.css
 │   │   └── app.js
 │   ├── server.js                      # Express application, JWT auth, listeners & MongoDB connection
+│   ├── Dockerfile                     # [Prac 11] Backend Node.js container definition
+│   ├── .dockerignore                  # [Prac 11] Excludes node_modules & .env from build context
 │   ├── .env                           # Local environment variables (git-ignored)
 │   ├── .env.example                   # Environment configuration template
 │   └── package.json
 │
-├── package.json                       # Monorepo root scripts (concurrently)
+├── docker-compose.yml                 # [Prac 11] Multi-container orchestration (frontend, backend, mongodb)
+├── .dockerignore                      # [Prac 11] Root build context exclusion filter
+├── package.json                       # Monorepo root scripts (concurrently + docker compose)
 ├── .gitignore                         # Standard git ignore (node_modules, .env)
 └── README.md                          # Repository documentation
 ```
@@ -164,6 +170,40 @@ awdf-project/
   - **Supplementary Events:** Implemented `task-deleted`, `task-updated`, and safe `error` event handlers.
   - **Live Event Stream Endpoint:** Exposes `GET /api/tasks/events/history` to audit background worker jobs in real-time.
 
+### 🔹 Practical 11: Containerization with Docker and Docker Compose
+* **CO/PO Mapping:** CO5 / PO3, PO5
+* **Objective:** Containerize the full-stack Task Management application using Docker and orchestrate all microservices using Docker Compose.
+* **Architecture & Orchestration Flow:**
+  ```text
+  docker-compose.yml
+  ├── awdf-frontend (React 19 + Vite Preview, port 5173:5173)
+  ├── awdf-backend  (Node.js / Express REST API, port 5000:5000)
+  └── awdf-mongodb  (Official Mongo 6+ Image, port 27017:27017, named volume: mongo-data)
+
+  Internal Network: app-network (bridge)
+  awdf-frontend ──► awdf-backend ──► awdf-mongodb
+  Single-Command Bootstrap: docker compose up --build
+  ```
+* **Key Components & Files:**
+  - `backend/Dockerfile`: Production Node.js 18 environment, optimized layer caching (`COPY package*.json` -> `RUN npm install` -> `COPY . .`), exposes port 5000.
+  - `backend/.dockerignore`: Excludes `node_modules`, `npm-debug.log`, `.env`, and `.git` from the Docker build context.
+  - `frontend/Dockerfile`: Multi-stage build (`FROM node:18 AS build`) compiling production assets with `npm run build` and serving through `npm run preview -- --host 0.0.0.0 --port 5173`.
+  - `frontend/.dockerignore`: Excludes `node_modules`, `dist`, `.env`, and `.git` from frontend context to ensure fast and lightweight image builds.
+  - `docker-compose.yml`: Coordinates all 3 services, configures inter-service environment variables (`MONGO_URI=mongodb://mongodb:27017/taskdb`, `VITE_API_TARGET=http://backend:5000`), handles service startup order via `depends_on`, attaches the bridge network `app-network`, and provisions the persistent named volume `mongo-data`.
+* **Key Questions / Viva Analysis:**
+  1. **Why does the backend container reference the MongoDB container by service name (`mongodb`) rather than `localhost`?**
+     - Each Docker container runs in its own isolated network namespace with its own `localhost` (127.0.0.1) loopback adapter. Connecting to `localhost:27017` from the backend would query port 27017 inside the backend container itself where no database exists. On a Docker user-defined bridge network (`app-network`), Docker provides an automatic internal DNS server that resolves Compose service names (like `mongodb`) to that container's dynamic private IP address.
+  2. **What is the difference between `EXPOSE` in a Dockerfile and the `ports` mapping in `docker-compose.yml`?**
+     - `EXPOSE` is purely documentation/metadata within the image declaring that the containerized process listens on that port. It does not bind or publish the port to the host system.
+     - The `ports` directive (`host_port:container_port`, e.g., `5173:5173`) creates an active NAT firewall/forwarding rule on the host operating system, allowing external traffic (such as host web browsers) to reach the service inside the container.
+  3. **Why is it bad practice to copy `node_modules` into a Docker image instead of running `npm install` inside the container?**
+     - Host `node_modules` often contain native C/C++ compiled binaries (such as `bcrypt`) built for the host OS (e.g., Windows x64) which crash when executed inside a Linux container environment (`ELF` architecture mismatch).
+     - Copying `node_modules` inflates build context transfer sizes by hundreds of megabytes, breaking Docker build caching and significantly degrading build performance. Running `npm install` within the container guarantees clean, compatible native compilation for the container target OS.
+* **Supplementary Solutions:**
+  - Added `.dockerignore` files for root, frontend, and backend contexts.
+  - Configured multi-stage build structure for the React frontend.
+  - Implemented persistent named volume `mongo-data:/data/db` so MongoDB data persists seamlessly across container teardowns and restarts.
+
 ---
 
 ## 🛠️ API Reference Table
@@ -187,7 +227,37 @@ awdf-project/
 
 ## ⚡ Quick Start & Run Guide
 
-### 1. Configure Environment
+### Option A: Run with Docker Compose (Practical 11 — Recommended)
+
+Build and launch the complete multi-container stack with a single command:
+```bash
+docker compose up --build
+```
+* **Frontend App:** http://localhost:5173
+* **Backend REST API:** http://localhost:5000
+* **API Test Bench:** http://localhost:5000/
+* **MongoDB:** `localhost:27017` (data persisted in `mongo-data` named volume)
+
+**Verification & Management Commands:**
+```bash
+# Check running containers
+docker ps
+
+# Follow container logs
+docker compose logs -f
+
+# Stop all services gracefully
+docker compose down
+
+# Stop and wipe volume data (clean state reset)
+docker compose down -v
+```
+
+---
+
+### Option B: Run Locally with Node.js & Concurrently (Practicals 1–10)
+
+#### 1. Configure Environment
 Create `.env` in `backend/`:
 ```env
 PORT=5000
@@ -196,7 +266,7 @@ MONGO_URI=mongodb://127.0.0.1:27017/taskmanager
 JWT_SECRET=supersecret_jwt_key_practical7_charusat_2026
 ```
 
-### 2. Start Both Frontend and Backend Concurrently
+#### 2. Start Both Frontend and Backend Concurrently
 From the root directory:
 ```bash
 npm run dev

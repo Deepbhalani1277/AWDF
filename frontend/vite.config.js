@@ -6,11 +6,23 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
+  },
+  preview: {
+    port: 5173,
+    host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET || 'http://backend:5000',
         changeOrigin: true
       }
     }
   }
 });
+

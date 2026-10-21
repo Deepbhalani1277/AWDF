@@ -1,0 +1,57 @@
+services:
+  # 1. Official MongoDB Service with Persistent Named Volume
+  mongodb:
+    image: mongo:latest
+    container_name: awdf-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
+  # 2. Node.js & Express RESTful API Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: awdf-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/taskdb
+      - JWT_SECRET=awdf_jwt_secret_token_secure_key_2026
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+
+  # 3. React (Vite) Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: awdf-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_TARGET=http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+# Supplementary: Persistent Named Volume for MongoDB Data
+volumes:
+  mongo-data:
+    driver: local
+
+# Internal Bridge Network for Inter-Container Communication
+networks:
+  app-network:
+    driver: bridge
